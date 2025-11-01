@@ -1,12 +1,10 @@
 enum AppRoute {
-  diagnostics('/diagnostics'),
-  login('/login'),
   dashboard('/dashboard'),
   vendors('/vendors'),
-  services('/services'),
-  plans('/plans'),
-  bookings('/bookings'),
-  subscriptions('/subscriptions');
+  vendorDetail('/vendors/detail'),
+  subscriptions('/subscriptions'),
+  audit('/audit'),
+  diagnostics('/diagnostics');
 
   const AppRoute(this.path);
   final String path;

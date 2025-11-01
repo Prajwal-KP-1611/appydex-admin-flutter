@@ -3,7 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'core/config.dart';
+import 'features/dashboard/dashboard_screen.dart';
 import 'features/diagnostics/diagnostics_screen.dart';
+import 'features/subscriptions/subscriptions_admin_screen.dart';
+import 'features/vendors/vendor_detail_screen.dart';
+import 'features/vendors/vendors_list_screen.dart';
+import 'features/audit/audit_logs_screen.dart';
+import 'routes.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,7 +35,49 @@ class AppydexAdminApp extends ConsumerWidget {
       title: 'Appydex Admin',
       debugShowCheckedModeBanner: false,
       theme: theme,
-      home: DiagnosticsScreen(initialBaseUrl: baseUrl),
+      initialRoute: AppRoute.dashboard.path,
+      onGenerateRoute: (settings) {
+        switch (settings.name) {
+          case '/':
+          case '/dashboard':
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const DashboardScreen(),
+            );
+          case '/vendors':
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) =>
+                  VendorsListScreen(initialArguments: settings.arguments),
+            );
+          case '/vendors/detail':
+            final args = settings.arguments as VendorDetailArgs?;
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => VendorDetailScreen(args: args),
+            );
+          case '/subscriptions':
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const SubscriptionsAdminScreen(),
+            );
+          case '/audit':
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const AuditLogsScreen(),
+            );
+          case '/diagnostics':
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => DiagnosticsScreen(initialBaseUrl: baseUrl),
+            );
+          default:
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const DashboardScreen(),
+            );
+        }
+      },
     );
   }
 

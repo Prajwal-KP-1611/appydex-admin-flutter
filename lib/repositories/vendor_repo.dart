@@ -16,6 +16,8 @@ class VendorRepository {
     String? status,
     String? planCode,
     bool? verified,
+    DateTime? createdAfter,
+    DateTime? createdBefore,
     int page = 1,
     int pageSize = 20,
   }) async {
@@ -26,6 +28,9 @@ class VendorRepository {
       if (status != null && status.isNotEmpty) 'status': status,
       if (planCode != null && planCode.isNotEmpty) 'plan_code': planCode,
       if (verified != null) 'verified': verified,
+      if (createdAfter != null) 'created_after': createdAfter.toIso8601String(),
+      if (createdBefore != null)
+        'created_before': createdBefore.toIso8601String(),
     };
 
     try {

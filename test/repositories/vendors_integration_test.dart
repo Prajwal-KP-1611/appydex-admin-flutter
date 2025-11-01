@@ -8,6 +8,7 @@ import 'package:appydex_admin/core/api_client.dart';
 import 'package:appydex_admin/core/auth/token_storage.dart';
 import 'package:appydex_admin/core/config.dart';
 import 'package:appydex_admin/repositories/admin_exceptions.dart';
+import 'package:appydex_admin/providers/vendors_provider.dart';
 import 'package:appydex_admin/repositories/vendor_repo.dart';
 
 class _FakeStorage implements TokenStorage {
@@ -122,4 +123,30 @@ void main() {
 
     expect(() => setup.repo.list(), throwsA(isA<AdminEndpointMissing>()));
   });
+
+  test(
+    'vendorsProvider falls back to mock data when endpoint missing',
+    () async {
+      final adapter = _StaticAdapter((options) async {
+        return ResponseBody.fromString(
+          '{"detail":"Not Found"}',
+          404,
+          headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType],
+          },
+        );
+      });
+
+      final setup = await _bootstrapWithAdapter(adapter);
+      addTearDown(setup.container.dispose);
+
+      final container = setup.container;
+      final notifier = container.read(vendorsProvider.notifier);
+      await notifier.load();
+
+      final state = container.read(vendorsProvider);
+      expect(state.usingMock, isTrue);
+      expect(state.data.valueOrNull?.items, isNotEmpty);
+    },
+  );
 }
