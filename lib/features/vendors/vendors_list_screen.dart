@@ -92,292 +92,386 @@ class _VendorsListScreenState extends ConsumerState<VendorsListScreen> {
           icon: const Icon(Icons.refresh),
         ),
       ],
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            FilterRow(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isNarrow = constraints.maxWidth < 900;
+          return Padding(
+            padding: EdgeInsets.fromLTRB(24, isNarrow ? 8 : 24, 24, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(
-                  width: 220,
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: const InputDecoration(
-                      labelText: 'Search (name or email)',
-                      prefixIcon: Icon(Icons.search),
-                    ),
-                    onSubmitted: (value) => notifier.updateFilter(
-                      state.filter.copyWith(query: value, page: 1),
-                    ),
-                  ),
-                ),
-                DropdownButtonFormField<String?>(
-                  initialValue: state.filter.status,
-                  decoration: const InputDecoration(labelText: 'Status'),
-                  items: const <DropdownMenuItem<String?>>[
-                    DropdownMenuItem(value: null, child: Text('All')),
-                    DropdownMenuItem(value: 'active', child: Text('Active')),
-                    DropdownMenuItem(
-                      value: 'inactive',
-                      child: Text('Inactive'),
-                    ),
-                  ],
-                  onChanged: (value) => notifier.updateFilter(
-                    state.filter.copyWith(status: value, page: 1),
-                  ),
-                ),
-                DropdownButtonFormField<String?>(
-                  initialValue: state.filter.verified == null
-                      ? null
-                      : (state.filter.verified! ? 'true' : 'false'),
-                  decoration: const InputDecoration(labelText: 'Verified'),
-                  items: const <DropdownMenuItem<String?>>[
-                    DropdownMenuItem(value: null, child: Text('All')),
-                    DropdownMenuItem(value: 'true', child: Text('Verified')),
-                    DropdownMenuItem(value: 'false', child: Text('Unverified')),
-                  ],
-                  onChanged: (value) => notifier.updateFilter(
-                    state.filter.copyWith(
-                      verified: value == null
-                          ? null
-                          : value == 'true'
-                          ? true
-                          : false,
-                      page: 1,
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  width: 180,
-                  child: TextField(
-                    decoration: const InputDecoration(labelText: 'Plan code'),
-                    onSubmitted: (value) => notifier.updateFilter(
-                      state.filter.copyWith(
-                        planCode: value.isEmpty ? null : value,
-                        page: 1,
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isNarrow = constraints.maxWidth < 900;
+                    final filterChildren = <Widget>[
+                      SizedBox(
+                        width: 220,
+                        child: TextField(
+                          controller: _searchController,
+                          decoration: const InputDecoration(
+                            labelText: 'Search (name or email)',
+                            prefixIcon: Icon(Icons.search),
+                          ),
+                          onSubmitted: (value) => notifier.updateFilter(
+                            state.filter.copyWith(query: value, page: 1),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    final range = await showDateRangePicker(
-                      context: context,
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime.now(),
-                      initialDateRange: _createdRange,
+                      DropdownButtonFormField<String?>(
+                        initialValue: state.filter.status,
+                        decoration: const InputDecoration(labelText: 'Status'),
+                        items: const <DropdownMenuItem<String?>>[
+                          DropdownMenuItem(value: null, child: Text('All')),
+                          DropdownMenuItem(
+                            value: 'active',
+                            child: Text('Active'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'inactive',
+                            child: Text('Inactive'),
+                          ),
+                        ],
+                        onChanged: (value) => notifier.updateFilter(
+                          state.filter.copyWith(status: value, page: 1),
+                        ),
+                      ),
+                      DropdownButtonFormField<String?>(
+                        initialValue: state.filter.verified == null
+                            ? null
+                            : (state.filter.verified! ? 'true' : 'false'),
+                        decoration: const InputDecoration(
+                          labelText: 'Verified',
+                        ),
+                        items: const <DropdownMenuItem<String?>>[
+                          DropdownMenuItem(value: null, child: Text('All')),
+                          DropdownMenuItem(
+                            value: 'true',
+                            child: Text('Verified'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'false',
+                            child: Text('Unverified'),
+                          ),
+                        ],
+                        onChanged: (value) => notifier.updateFilter(
+                          state.filter.copyWith(
+                            verified: value == null
+                                ? null
+                                : value == 'true'
+                                ? true
+                                : false,
+                            page: 1,
+                          ),
+                        ),
+                      ),
+                      SizedBox(
+                        width: 180,
+                        child: TextField(
+                          decoration: const InputDecoration(
+                            labelText: 'Plan code',
+                          ),
+                          onSubmitted: (value) => notifier.updateFilter(
+                            state.filter.copyWith(
+                              planCode: value.isEmpty ? null : value,
+                              page: 1,
+                            ),
+                          ),
+                        ),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                          final range = await showDateRangePicker(
+                            context: context,
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime.now(),
+                            initialDateRange: _createdRange,
+                          );
+                          if (!context.mounted) return;
+                          setState(() => _createdRange = range);
+                          notifier.updateFilter(
+                            state.filter.copyWith(
+                              createdAfter: range?.start,
+                              createdBefore: range?.end,
+                              page: 1,
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.calendar_today, size: 16),
+                        label: Text(
+                          _createdRange == null
+                              ? 'Created date'
+                              : '${_createdRange!.start.toLocal().toShort()} - ${_createdRange!.end.toLocal().toShort()}',
+                        ),
+                      ),
+                    ];
+
+                    if (isNarrow) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ExpansionTile(
+                            title: const Text('Filters'),
+                            childrenPadding: EdgeInsets.zero,
+                            children: [FilterRow(children: filterChildren)],
+                          ),
+                          if (state.missingEndpoint != null)
+                            TextButton(
+                              onPressed: () => _showBackendTodo(context),
+                              child: const Text('View backend TODO'),
+                            ),
+                        ],
+                      );
+                    }
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        FilterRow(children: filterChildren),
+                        if (state.missingEndpoint != null)
+                          TextButton(
+                            onPressed: () => _showBackendTodo(context),
+                            child: const Text('View backend TODO'),
+                          ),
+                      ],
                     );
-                    if (!context.mounted) return;
-                    setState(() => _createdRange = range);
-                    notifier.updateFilter(
-                      state.filter.copyWith(
-                        createdAfter: range?.start,
-                        createdBefore: range?.end,
-                        page: 1,
+                  },
+                ),
+                // Quick action for narrow screens to keep a visible 'Verify' button
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isNarrow = constraints.maxWidth < 900;
+                    if (!isNarrow || rows.isEmpty || rows.first.isVerified) {
+                      return const SizedBox.shrink();
+                    }
+                    return Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () async {
+                          await notifier.verifyVendor(rows.first.id);
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            buildTraceSnackbar(
+                              'Vendor verified',
+                              traceId: lastTraceId,
+                            ),
+                          );
+                        },
+                        child: const Text('Verify'),
                       ),
                     );
                   },
-                  icon: const Icon(Icons.calendar_today, size: 16),
-                  label: Text(
-                    _createdRange == null
-                        ? 'Created date'
-                        : '${_createdRange!.start.toLocal().toShort()} - ${_createdRange!.end.toLocal().toShort()}',
-                  ),
                 ),
-                if (state.missingEndpoint != null)
-                  TextButton(
-                    onPressed: () => _showBackendTodo(context),
-                    child: const Text('View backend TODO'),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Checkbox(
-                  value:
-                      rows.isNotEmpty && state.selected.length == rows.length,
-                  tristate: rows.isNotEmpty && state.selected.isNotEmpty,
-                  onChanged: rows.isEmpty
-                      ? null
-                      : (value) {
-                          if (value == true) {
-                            notifier.selectAll(rows);
-                          } else {
-                            notifier.clearSelection();
-                          }
-                        },
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isNarrow = constraints.maxWidth < 900;
+                    return SizedBox(height: isNarrow ? 0 : 16);
+                  },
                 ),
-                const SizedBox(width: 8),
-                Text('Select all'),
-                const Spacer(),
-                FilledButton(
-                  onPressed: state.selected.isEmpty
-                      ? null
-                      : () async {
-                          final confirmed = await showConfirmDialog(
-                            context,
-                            title: 'Bulk verify',
-                            message: 'Verify ${state.selected.length} vendors?',
-                            confirmLabel: 'Verify',
-                          );
-                          if (confirmed != true) return;
-                          await notifier.bulkVerify();
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            buildTraceSnackbar(
-                              'Vendors verified',
-                              traceId: lastTraceId,
-                            ),
-                          );
-                        },
-                  child: const Text('Verify selected'),
-                ),
-                const SizedBox(width: 12),
-                OutlinedButton(
-                  onPressed: state.selected.isEmpty
-                      ? null
-                      : () async {
-                          final confirmed = await showConfirmDialog(
-                            context,
-                            title: 'Bulk deactivate',
-                            message:
-                                'Deactivate ${state.selected.length} vendors?',
-                            confirmLabel: 'Deactivate',
-                            isDestructive: true,
-                          );
-                          if (confirmed != true) return;
-                          await notifier.bulkDeactivate();
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            buildTraceSnackbar(
-                              'Vendors deactivated',
-                              traceId: lastTraceId,
-                            ),
-                          );
-                        },
-                  child: const Text('Deactivate selected'),
-                ),
-                const SizedBox(width: 12),
-                OutlinedButton.icon(
-                  onPressed: rows.isEmpty
-                      ? null
-                      : () {
-                          final csv = notifier.exportCurrentCsv();
-                          Clipboard.setData(ClipboardData(text: csv));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            buildTraceSnackbar('CSV copied to clipboard'),
-                          );
-                        },
-                  icon: const Icon(Icons.download),
-                  label: const Text('Export CSV'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: DataTableSimple(
-                columns: const [
-                  DataTableSimpleColumn(label: 'Select', flex: 1),
-                  DataTableSimpleColumn(label: 'Vendor', flex: 3),
-                  DataTableSimpleColumn(label: 'Owner', flex: 2),
-                  DataTableSimpleColumn(label: 'Contact', flex: 2),
-                  DataTableSimpleColumn(label: 'Plan', flex: 1),
-                  DataTableSimpleColumn(label: 'Verified', flex: 1),
-                  DataTableSimpleColumn(label: 'Onboarding', flex: 1),
-                  DataTableSimpleColumn(label: 'Created At', flex: 2),
-                  DataTableSimpleColumn(label: 'Actions', flex: 2),
-                ],
-                rows: rows
-                    .map(
-                      (vendor) => [
-                        Checkbox(
-                          value: state.selected.contains(vendor.id),
-                          onChanged: (value) =>
-                              notifier.toggleSelection(vendor.id),
-                        ),
-                        _VendorNameCell(vendor: vendor),
-                        Text(vendor.ownerEmail),
-                        Text(vendor.phone ?? '—'),
-                        Text(vendor.planCode ?? '—'),
-                        StatusChip(
-                          label: vendor.isVerified ? 'Verified' : 'Pending',
-                          color: vendor.isVerified
-                              ? Colors.green
-                              : theme.colorScheme.secondary,
-                        ),
-                        Text('${(vendor.onboardingScore * 100).round()}%'),
-                        Text(vendor.createdAt.toLocal().toString()),
-                        _VendorActions(
-                          vendor: vendor,
-                          onView: () => _openVendorDetail(context, vendor),
-                          onVerify: vendor.isVerified
-                              ? null
-                              : () async {
-                                  await notifier.verifyVendor(vendor.id);
-                                  if (!context.mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    buildTraceSnackbar(
-                                      'Vendor verified',
-                                      traceId: lastTraceId,
-                                    ),
-                                  );
-                                },
-                          onToggleActive: () async {
-                            await notifier.toggleActive(
-                              vendor.id,
-                              !vendor.isActive,
-                            );
-                            if (!context.mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              buildTraceSnackbar(
-                                vendor.isActive
-                                    ? 'Vendor deactivated'
-                                    : 'Vendor activated',
-                                traceId: lastTraceId,
-                              ),
-                            );
-                          },
-                          onExport: () {
-                            final csv = toCsv([
-                              {
-                                'id': vendor.id,
-                                'name': vendor.name,
-                                'owner_email': vendor.ownerEmail,
-                                'phone': vendor.phone ?? '',
-                                'plan_code': vendor.planCode ?? '',
-                                'is_active': vendor.isActive,
-                                'is_verified': vendor.isVerified,
-                                'onboarding_score': vendor.onboardingScore,
-                                'created_at': vendor.createdAt
-                                    .toIso8601String(),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isNarrow = constraints.maxWidth < 900;
+                    if (isNarrow) {
+                      // Hide bulk action bar on narrow screens to keep row actions visible
+                      return const SizedBox.shrink();
+                    }
+                    final actions = <Widget>[
+                      FilledButton(
+                        onPressed: state.selected.isEmpty
+                            ? null
+                            : () async {
+                                final confirmed = await showConfirmDialog(
+                                  context,
+                                  title: 'Bulk verify',
+                                  message:
+                                      'Verify ${state.selected.length} vendors?',
+                                  confirmLabel: 'Verify',
+                                );
+                                if (confirmed != true) return;
+                                await notifier.bulkVerify();
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  buildTraceSnackbar(
+                                    'Vendors verified',
+                                    traceId: lastTraceId,
+                                  ),
+                                );
                               },
-                            ]);
-                            Clipboard.setData(ClipboardData(text: csv));
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              buildTraceSnackbar('Vendor CSV copied'),
-                            );
-                          },
+                        child: const Text('Verify selected'),
+                      ),
+                      const SizedBox(width: 12),
+                      OutlinedButton(
+                        onPressed: state.selected.isEmpty
+                            ? null
+                            : () async {
+                                final confirmed = await showConfirmDialog(
+                                  context,
+                                  title: 'Bulk deactivate',
+                                  message:
+                                      'Deactivate ${state.selected.length} vendors?',
+                                  confirmLabel: 'Deactivate',
+                                  isDestructive: true,
+                                );
+                                if (confirmed != true) return;
+                                await notifier.bulkDeactivate();
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  buildTraceSnackbar(
+                                    'Vendors deactivated',
+                                    traceId: lastTraceId,
+                                  ),
+                                );
+                              },
+                        child: const Text('Deactivate selected'),
+                      ),
+                      const SizedBox(width: 12),
+                      OutlinedButton.icon(
+                        onPressed: rows.isEmpty
+                            ? null
+                            : () {
+                                final csv = notifier.exportCurrentCsv();
+                                Clipboard.setData(ClipboardData(text: csv));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  buildTraceSnackbar('CSV copied to clipboard'),
+                                );
+                              },
+                        icon: const Icon(Icons.download),
+                        label: const Text('Export CSV'),
+                      ),
+                    ];
+
+                    return Row(
+                      children: [
+                        Checkbox(
+                          value:
+                              rows.isNotEmpty &&
+                              state.selected.length == rows.length,
+                          tristate:
+                              rows.isNotEmpty && state.selected.isNotEmpty,
+                          onChanged: rows.isEmpty
+                              ? null
+                              : (value) {
+                                  if (value == true) {
+                                    notifier.selectAll(rows);
+                                  } else {
+                                    notifier.clearSelection();
+                                  }
+                                },
                         ),
+                        const SizedBox(width: 8),
+                        const Text('Select all'),
+                        const Spacer(),
+                        ...actions,
                       ],
-                    )
-                    .toList(),
-                isLoading: isLoading,
-                emptyLabel: 'No vendors found for current filters.',
-                total: data?.total ?? 0,
-                page: state.filter.page,
-                pageSize: state.filter.pageSize,
-                onPageChange: notifier.setPage,
-                error: error,
-                onRetry: notifier.load,
-                onUseMock: state.missingEndpoint != null
-                    ? notifier.useMockData
-                    : null,
-              ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: DataTableSimple(
+                    columns: const [
+                      DataTableSimpleColumn(label: 'Select', flex: 1),
+                      DataTableSimpleColumn(label: 'Vendor', flex: 3),
+                      DataTableSimpleColumn(label: 'Owner', flex: 2),
+                      DataTableSimpleColumn(label: 'Contact', flex: 2),
+                      DataTableSimpleColumn(label: 'Plan', flex: 1),
+                      DataTableSimpleColumn(label: 'Verified', flex: 1),
+                      DataTableSimpleColumn(label: 'Onboarding', flex: 1),
+                      DataTableSimpleColumn(label: 'Created At', flex: 2),
+                      DataTableSimpleColumn(label: 'Actions', flex: 2),
+                    ],
+                    rows: rows
+                        .map(
+                          (vendor) => [
+                            Checkbox(
+                              value: state.selected.contains(vendor.id),
+                              onChanged: (value) =>
+                                  notifier.toggleSelection(vendor.id),
+                            ),
+                            _VendorNameCell(vendor: vendor),
+                            Text(vendor.ownerEmail),
+                            Text(vendor.phone ?? '—'),
+                            Text(vendor.planCode ?? '—'),
+                            StatusChip(
+                              label: vendor.isVerified ? 'Verified' : 'Pending',
+                              color: vendor.isVerified
+                                  ? Colors.green
+                                  : theme.colorScheme.secondary,
+                            ),
+                            Text('${(vendor.onboardingScore * 100).round()}%'),
+                            Text(vendor.createdAt.toLocal().toString()),
+                            _VendorActions(
+                              vendor: vendor,
+                              onView: () => _openVendorDetail(context, vendor),
+                              onVerify: vendor.isVerified
+                                  ? null
+                                  : () async {
+                                      await notifier.verifyVendor(vendor.id);
+                                      if (!context.mounted) return;
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        buildTraceSnackbar(
+                                          'Vendor verified',
+                                          traceId: lastTraceId,
+                                        ),
+                                      );
+                                    },
+                              onToggleActive: () async {
+                                await notifier.toggleActive(
+                                  vendor.id,
+                                  !vendor.isActive,
+                                );
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  buildTraceSnackbar(
+                                    vendor.isActive
+                                        ? 'Vendor deactivated'
+                                        : 'Vendor activated',
+                                    traceId: lastTraceId,
+                                  ),
+                                );
+                              },
+                              onExport: () {
+                                final csv = toCsv([
+                                  {
+                                    'id': vendor.id,
+                                    'name': vendor.name,
+                                    'owner_email': vendor.ownerEmail,
+                                    'phone': vendor.phone ?? '',
+                                    'plan_code': vendor.planCode ?? '',
+                                    'is_active': vendor.isActive,
+                                    'is_verified': vendor.isVerified,
+                                    'onboarding_score': vendor.onboardingScore,
+                                    'created_at': vendor.createdAt
+                                        .toIso8601String(),
+                                  },
+                                ]);
+                                Clipboard.setData(ClipboardData(text: csv));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  buildTraceSnackbar('Vendor CSV copied'),
+                                );
+                              },
+                            ),
+                          ],
+                        )
+                        .toList(),
+                    isLoading: isLoading,
+                    emptyLabel: 'No vendors found for current filters.',
+                    total: data?.total ?? 0,
+                    page: state.filter.page,
+                    pageSize: state.filter.pageSize,
+                    onPageChange: notifier.setPage,
+                    error: error,
+                    onRetry: notifier.load,
+                    onUseMock: state.missingEndpoint != null
+                        ? notifier.useMockData
+                        : null,
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -440,11 +534,12 @@ class _VendorActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isNarrow = MediaQuery.of(context).size.width < 900;
     return Wrap(
       spacing: 8,
       children: [
         TextButton(onPressed: onView, child: const Text('Detail')),
-        if (onVerify != null)
+        if (onVerify != null && !isNarrow)
           TextButton(onPressed: onVerify, child: const Text('Verify')),
         TextButton(
           onPressed: onToggleActive,

@@ -36,26 +36,60 @@ class _FakeVendorRepository implements VendorRepository {
 
   @override
   Future<Pagination<Vendor>> list({
-    String? query,
+    int skip = 0,
+    int limit = 100,
     String? status,
-    String? planCode,
-    bool? verified,
-    DateTime? createdAfter,
-    DateTime? createdBefore,
-    int page = 1,
-    int pageSize = 20,
-  }) async => _page;
+    String? search,
+  }) async {
+    return Pagination<Vendor>(
+      items: [_baseVendor],
+      total: 1,
+      page: 1,
+      pageSize: 20,
+    );
+  }
 
   @override
   Future<Vendor> patch(int id, Map<String, dynamic> changes) async {
-    patchCalls++;
-    return _page.items.first.copyWith(
-      isVerified:
-          changes['is_verified'] as bool? ?? _page.items.first.isVerified,
-      notes: changes['notes'] as String? ?? _page.items.first.notes,
-      isActive: changes['is_active'] as bool? ?? _page.items.first.isActive,
+    return _baseVendor.copyWith(
+      isVerified: changes['is_verified'] as bool? ?? _baseVendor.isVerified,
+      isActive: changes['is_active'] as bool? ?? _baseVendor.isActive,
+      notes: changes['notes'] as String? ?? _baseVendor.notes,
     );
   }
+
+  @override
+  Future<VendorVerificationResult> verifyOrReject({
+    required int id,
+    required String action,
+    String? notes,
+  }) async {
+    return VendorVerificationResult(
+      vendorId: id,
+      status: action == 'approve' ? 'verified' : 'rejected',
+      verifiedAt: DateTime.now(),
+      notes: notes,
+    );
+  }
+
+  @override
+  Future<Vendor> verify(int id, {String? notes}) async {
+    patchCalls++;
+    return _page.items.first.copyWith(isVerified: true, notes: notes);
+  }
+
+  @override
+  Future<Vendor> reject(int id, {required String reason}) async {
+    patchCalls++;
+    return _page.items.first.copyWith(isVerified: false, notes: reason);
+  }
+
+  @override
+  Future<List<VendorDocument>> getDocuments(int vendorId) async => [];
+
+  @override
+  Future<List<Vendor>> bulkVerify(List<int> vendorIds, {String? notes}) async =>
+      [];
 }
 
 void main() {

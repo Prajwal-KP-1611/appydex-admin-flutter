@@ -119,14 +119,10 @@ class VendorsNotifier extends StateNotifier<VendorsState> {
       final result = forceMock || state.usingMock
           ? _mock.vendors(page: filter.page, pageSize: filter.pageSize)
           : await _repo.list(
-              query: filter.query,
+              search: filter.query,
               status: filter.status,
-              planCode: filter.planCode,
-              verified: filter.verified,
-              createdAfter: filter.createdAfter,
-              createdBefore: filter.createdBefore,
-              page: filter.page,
-              pageSize: filter.pageSize,
+              skip: (filter.page - 1) * filter.pageSize,
+              limit: filter.pageSize,
             );
 
       state = state.copyWith(

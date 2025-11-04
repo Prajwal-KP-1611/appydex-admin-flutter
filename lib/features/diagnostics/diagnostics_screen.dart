@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/api_client.dart'
     show
@@ -11,6 +12,7 @@ import '../../core/api_client.dart'
         LastRequestFailure;
 import '../../core/auth/auth_controller.dart';
 import '../../core/config.dart';
+import '../../core/admin_config.dart';
 import 'diagnostics_controller.dart';
 
 class DiagnosticsScreen extends ConsumerStatefulWidget {
@@ -24,16 +26,21 @@ class DiagnosticsScreen extends ConsumerStatefulWidget {
 
 class _DiagnosticsScreenState extends ConsumerState<DiagnosticsScreen> {
   late final TextEditingController _baseUrlController;
+  late final TextEditingController _adminTokenController;
 
   @override
   void initState() {
     super.initState();
     _baseUrlController = TextEditingController(text: widget.initialBaseUrl);
+    _adminTokenController = TextEditingController(
+      text: AdminConfig.adminToken ?? '',
+    );
   }
 
   @override
   void dispose() {
     _baseUrlController.dispose();
+    _adminTokenController.dispose();
     super.dispose();
   }
 
@@ -55,6 +62,7 @@ class _DiagnosticsScreenState extends ConsumerState<DiagnosticsScreen> {
 
     final cards = <Widget>[
       _buildBaseUrlCard(context, diagnosticsState),
+      _buildAdminTokenCard(context),
       _buildHealthCard(context, diagnosticsState),
       _buildDnsCard(context, diagnosticsState),
       _buildOtpUnavailableCard(context),
@@ -155,6 +163,98 @@ class _DiagnosticsScreenState extends ConsumerState<DiagnosticsScreen> {
                   child: const Text('Reset to default'),
                 ),
               ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAdminTokenCard(BuildContext context) {
+    final theme = Theme.of(context);
+    final currentToken = AdminConfig.adminToken;
+    final hasToken = currentToken != null && currentToken.isNotEmpty;
+
+    return Card(
+      color: hasToken
+          ? null
+          : theme.colorScheme.errorContainer.withOpacity(0.3),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  'Admin Token (X-Admin-Token)',
+                  style: theme.textTheme.displayMedium,
+                ),
+                if (!hasToken) ...[
+                  const SizedBox(width: 8),
+                  Icon(Icons.warning, color: theme.colorScheme.error, size: 20),
+                ],
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (!hasToken)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Text(
+                  '⚠️ Admin token is NOT set. DELETE, UPDATE, and CREATE operations will fail with Status Code: null',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.error,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            Text(
+              'Current Status: ${hasToken ? "✅ SET" : "❌ NOT SET"}',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: hasToken
+                    ? const Color(0xFF00A86B)
+                    : theme.colorScheme.error,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _adminTokenController,
+              decoration: InputDecoration(
+                labelText: 'Admin Token',
+                hintText: 'test-secret-admin-token-12345',
+                helperText: hasToken
+                    ? 'Token is currently set in memory'
+                    : 'Enter admin token from backend team or .env file',
+                suffixIcon: hasToken
+                    ? const Icon(Icons.check_circle, color: Color(0xFF00A86B))
+                    : const Icon(Icons.error, color: Colors.red),
+              ),
+              obscureText: true,
+              keyboardType: TextInputType.text,
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                ElevatedButton(
+                  onPressed: () => _handleSaveAdminToken(),
+                  child: const Text('Save Token'),
+                ),
+                const SizedBox(width: 12),
+                if (hasToken)
+                  TextButton(
+                    onPressed: () => _handleClearAdminToken(),
+                    child: const Text('Clear Token'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Test Token (for development): test-secret-admin-token-12345',
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontStyle: FontStyle.italic,
+                color: theme.colorScheme.onSurface.withOpacity(0.6),
+              ),
             ),
           ],
         ),
@@ -586,6 +686,60 @@ class _DiagnosticsScreenState extends ConsumerState<DiagnosticsScreen> {
               : 'Base URL updated to $value',
         ),
       ),
+    );
+  }
+
+  Future<void> _handleSaveAdminToken() async {
+    final value = _adminTokenController.text.trim();
+    final messenger = ScaffoldMessenger.of(context);
+
+    if (value.isEmpty) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Please enter an admin token'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Save to SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('admin_token', value);
+
+    // Update in-memory config (provider will sync automatically)
+    AdminConfig.adminToken = value;
+
+    if (!mounted) return;
+    setState(() {}); // Refresh UI to show token is set
+
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text(
+          '✅ Admin token saved! You can now perform DELETE, CREATE, and UPDATE operations.',
+        ),
+        backgroundColor: Color(0xFF00A86B),
+        duration: Duration(seconds: 4),
+      ),
+    );
+  }
+
+  Future<void> _handleClearAdminToken() async {
+    final messenger = ScaffoldMessenger.of(context);
+
+    // Clear from SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('admin_token');
+
+    // Clear in-memory config (provider will sync automatically)
+    AdminConfig.adminToken = null;
+    _adminTokenController.clear();
+
+    if (!mounted) return;
+    setState(() {}); // Refresh UI to show token is cleared
+
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Admin token cleared')),
     );
   }
 

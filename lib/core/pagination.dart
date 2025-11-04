@@ -26,16 +26,38 @@ class Pagination<T> {
     Map<String, dynamic> json,
     T Function(Map<String, dynamic> item) decode,
   ) {
-    final items = (json['items'] as List<dynamic>? ?? const [])
+    // Support both old format {items, total, page, page_size}
+    // and new format {data, meta: {page, page_size, total, total_pages}}
+    List<dynamic> itemsList;
+    int total;
+    int page;
+    int pageSize;
+
+    if (json.containsKey('data') && json.containsKey('meta')) {
+      // New format: {data: [...], meta: {...}}
+      itemsList = json['data'] as List<dynamic>? ?? const [];
+      final meta = json['meta'] as Map<String, dynamic>? ?? {};
+      total = meta['total'] as int? ?? itemsList.length;
+      page = meta['page'] as int? ?? 1;
+      pageSize = meta['page_size'] as int? ?? itemsList.length;
+    } else {
+      // Old format: {items: [...], total, page, page_size}
+      itemsList = json['items'] as List<dynamic>? ?? const [];
+      total = json['total'] as int? ?? itemsList.length;
+      page = json['page'] as int? ?? 1;
+      pageSize = json['page_size'] as int? ?? itemsList.length;
+    }
+
+    final items = itemsList
         .whereType<Map<String, dynamic>>()
         .map(decode)
         .toList();
 
     return Pagination<T>(
       items: items,
-      total: json['total'] as int? ?? items.length,
-      page: json['page'] as int? ?? 1,
-      pageSize: json['page_size'] as int? ?? items.length,
+      total: total,
+      page: page,
+      pageSize: pageSize,
     );
   }
 }

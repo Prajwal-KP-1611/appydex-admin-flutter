@@ -1,19 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import 'core/admin_config.dart';
+import 'core/auth/auth_service.dart';
 import 'core/config.dart';
+import 'core/theme.dart';
+import 'features/admins/admins_list_screen.dart';
+import 'features/audit/audit_logs_screen.dart';
+import 'features/auth/change_password_screen.dart';
+import 'features/auth/login_screen.dart';
 import 'features/dashboard/dashboard_screen.dart';
 import 'features/diagnostics/diagnostics_screen.dart';
+import 'features/services/services_list_screen.dart';
 import 'features/subscriptions/subscriptions_admin_screen.dart';
 import 'features/vendors/vendor_detail_screen.dart';
 import 'features/vendors/vendors_list_screen.dart';
-import 'features/audit/audit_logs_screen.dart';
 import 'routes.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final config = await AppConfig.load(flavor: kAppFlavor);
+
+  // Force reset to localhost for development
+  await config.clearApiBaseUrl();
+
+  // Load admin token from preferences
+  final prefs = await SharedPreferences.getInstance();
+  final adminToken = prefs.getString('admin_token');
+  if (adminToken != null && adminToken.isNotEmpty) {
+    AdminConfig.adminToken = adminToken;
+  }
 
   runApp(
     ProviderScope(
@@ -23,21 +40,80 @@ Future<void> main() async {
   );
 }
 
-class AppydexAdminApp extends ConsumerWidget {
+class AppydexAdminApp extends ConsumerStatefulWidget {
   const AppydexAdminApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = _buildTheme();
+  ConsumerState<AppydexAdminApp> createState() => _AppydexAdminAppState();
+}
+
+class _AppydexAdminAppState extends ConsumerState<AppydexAdminApp> {
+  @override
+  void initState() {
+    super.initState();
+    // Initialize auth session on app start
+    Future.microtask(() {
+      ref.read(adminSessionProvider.notifier).initialize();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final config = ref.watch(appConfigProvider);
     final baseUrl = ref.watch(apiBaseUrlProvider);
+    final isAuthenticated = ref.watch(isAuthenticatedProvider);
 
     return MaterialApp(
-      title: 'Appydex Admin',
+      title: 'AppyDex Admin',
       debugShowCheckedModeBanner: false,
-      theme: theme,
-      initialRoute: AppRoute.dashboard.path,
+      theme: AppTheme.lightTheme,
+      initialRoute: config.flavor == 'test'
+          ? '/diagnostics'
+          : (isAuthenticated ? AppRoute.dashboard.path : '/login'),
       onGenerateRoute: (settings) {
+        // Check authentication for protected routes
+        final protectedRoutes = <String>[
+          '/',
+          '/dashboard',
+          '/vendors',
+          '/vendors/detail',
+          '/subscriptions',
+          '/audit',
+          '/diagnostics',
+          '/users',
+          '/services',
+          '/plans',
+          '/campaigns',
+          '/reviews',
+          '/payments',
+          '/reports',
+          '/admins',
+        ];
+
+        // In test flavor, allow diagnostics without auth for widget tests
+        final flavor = config.flavor;
+        if (flavor == 'test') {
+          protectedRoutes.remove('/diagnostics');
+        }
+
+        if (protectedRoutes.contains(settings.name) && !isAuthenticated) {
+          return MaterialPageRoute(
+            settings: settings,
+            builder: (_) => const LoginScreen(),
+          );
+        }
+
         switch (settings.name) {
+          case '/login':
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const LoginScreen(),
+            );
+          case '/change-password':
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const ChangePasswordScreen(),
+            );
           case '/':
           case '/dashboard':
             return MaterialPageRoute(
@@ -71,6 +147,16 @@ class AppydexAdminApp extends ConsumerWidget {
               settings: settings,
               builder: (_) => DiagnosticsScreen(initialBaseUrl: baseUrl),
             );
+          case '/admins':
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const AdminsListScreen(),
+            );
+          case '/services':
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const ServicesListScreen(),
+            );
           default:
             return MaterialPageRoute(
               settings: settings,
@@ -78,73 +164,6 @@ class AppydexAdminApp extends ConsumerWidget {
             );
         }
       },
-    );
-  }
-
-  ThemeData _buildTheme() {
-    const primaryColor = Color(0xFF0B5FFF);
-    const onPrimary = Color(0xFFFFFFFF);
-    const background = Color(0xFFF6F8FF);
-    const surface = Color(0xFFFFFFFF);
-    const surfaceVariant = Color(0xFFF3F4F6);
-    const errorColor = Color(0xFFE12D2D);
-
-    final defaultRadius = BorderRadius.circular(12);
-    final cardShape = RoundedRectangleBorder(borderRadius: defaultRadius);
-
-    final colorScheme = const ColorScheme.light().copyWith(
-      primary: primaryColor,
-      onPrimary: onPrimary,
-      surface: surface,
-      surfaceTint: primaryColor,
-      surfaceContainerHighest: surfaceVariant,
-      onSurface: Colors.black,
-      error: errorColor,
-      onError: onPrimary,
-      secondary: Color(0xFF12B0FF),
-    );
-
-    final textTheme = GoogleFonts.interTextTheme(
-      const TextTheme(
-        displayLarge: TextStyle(fontSize: 28, fontWeight: FontWeight.w600),
-        displayMedium: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-        bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w400),
-      ),
-    );
-
-    return ThemeData(
-      useMaterial3: true,
-      colorScheme: colorScheme,
-      scaffoldBackgroundColor: background,
-      textTheme: textTheme,
-      visualDensity: VisualDensity.adaptivePlatformDensity,
-      appBarTheme: const AppBarTheme(
-        elevation: 0,
-        centerTitle: false,
-        backgroundColor: surface,
-        foregroundColor: Colors.black87,
-      ),
-      cardTheme: CardThemeData(color: surface, elevation: 0, shape: cardShape),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: surface,
-        border: OutlineInputBorder(
-          borderRadius: defaultRadius,
-          borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: defaultRadius,
-          borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: defaultRadius,
-          borderSide: const BorderSide(color: primaryColor, width: 1.5),
-        ),
-      ),
-      snackBarTheme: SnackBarThemeData(
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: defaultRadius),
-      ),
     );
   }
 }

@@ -39,12 +39,15 @@ class MockAdminFallback {
       final id = (page - 1) * pageSize + index + 1;
       return Subscription(
         id: id,
-        vendorId: id,
-        planCode: index.isEven ? 'pro' : 'starter',
-        status: index.isEven ? 'active' : 'pending',
-        startAt: DateTime.now().subtract(Duration(days: id * 2)),
-        endAt: DateTime.now().add(Duration(days: id * 4)),
-        paidMonths: (index % 6) + 1,
+        vendorId: id + 100,
+        vendorName: 'Vendor ${id + 100}',
+        planId: index.isEven ? 1 : 2,
+        planName: index.isEven ? 'Pro Plan' : 'Starter Plan',
+        status: index % 3 == 0 ? 'expired' : 'active',
+        startsAt: DateTime.now().subtract(Duration(days: id * 2)),
+        expiresAt: DateTime.now().add(Duration(days: id * 4)),
+        autoRenew: index.isOdd,
+        createdAt: DateTime.now().subtract(Duration(days: id * 3)),
       );
     });
 

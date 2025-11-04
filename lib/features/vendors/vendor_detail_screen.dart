@@ -7,12 +7,15 @@ import '../../providers/mock_admin_fallback.dart';
 import '../../repositories/vendor_repo.dart';
 
 import '../../core/api_client.dart';
+import '../../core/utils/toast_service.dart';
 import '../../models/audit_event.dart';
 import '../../models/vendor.dart';
 import '../../providers/vendors_provider.dart';
 import '../../routes.dart';
 import '../../widgets/status_chip.dart';
 import '../../widgets/trace_snackbar.dart';
+import '../../widgets/vendor_approval_dialogs.dart';
+import '../../widgets/vendor_documents_dialog.dart';
 import '../shared/admin_sidebar.dart';
 import '../shared/confirm_dialog.dart';
 import 'vendor_verification_widget.dart';
@@ -174,7 +177,7 @@ class _VendorDetailViewState extends ConsumerState<_VendorDetailView> {
 
     return AdminScaffold(
       currentRoute: AppRoute.vendors,
-      title: vendor.name,
+      title: 'Vendor detail',
       child: DefaultTabController(
         length: 5,
         child: ListView(
@@ -182,6 +185,70 @@ class _VendorDetailViewState extends ConsumerState<_VendorDetailView> {
           children: [
             _VendorSummaryCard(
               vendor: vendor,
+              onApprove: vendor.isVerified
+                  ? null
+                  : () async {
+                      final notes = await showDialog<String>(
+                        context: context,
+                        builder: (context) =>
+                            ApproveVendorDialog(vendorName: vendor.name),
+                      );
+                      if (notes == null) return;
+
+                      try {
+                        await ref
+                            .read(vendorsProvider.notifier)
+                            .verifyVendor(vendor.id, notes: notes);
+                        if (!context.mounted) return;
+                        ToastService.showSuccess(
+                          context,
+                          'Vendor approved successfully',
+                        );
+                        ref.invalidate(vendorDetailProvider(vendor.id));
+                        ref.invalidate(vendorsProvider);
+                      } catch (error) {
+                        if (!context.mounted) return;
+                        ToastService.showError(
+                          context,
+                          'Failed to approve vendor: $error',
+                        );
+                      }
+                    },
+              onReject: vendor.isVerified
+                  ? null
+                  : () async {
+                      final reason = await showDialog<String>(
+                        context: context,
+                        builder: (context) =>
+                            RejectVendorDialog(vendorName: vendor.name),
+                      );
+                      if (reason == null) return;
+
+                      try {
+                        await ref
+                            .read(vendorRepositoryProvider)
+                            .reject(vendor.id, reason: reason);
+                        if (!context.mounted) return;
+                        ToastService.showSuccess(context, 'Vendor rejected');
+                        ref.invalidate(vendorDetailProvider(vendor.id));
+                        ref.invalidate(vendorsProvider);
+                      } catch (error) {
+                        if (!context.mounted) return;
+                        ToastService.showError(
+                          context,
+                          'Failed to reject vendor: $error',
+                        );
+                      }
+                    },
+              onViewDocuments: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => VendorDocumentsDialog(
+                    vendorId: vendor.id,
+                    vendorName: vendor.name,
+                  ),
+                );
+              },
               onVerify: vendor.isVerified
                   ? null
                   : () async {
@@ -300,12 +367,18 @@ class _VendorSummaryCard extends StatelessWidget {
   const _VendorSummaryCard({
     required this.vendor,
     required this.onVerify,
+    required this.onApprove,
+    required this.onReject,
+    required this.onViewDocuments,
     required this.onToggleActive,
     required this.onImpersonate,
   });
 
   final Vendor vendor;
   final VoidCallback? onVerify;
+  final VoidCallback? onApprove;
+  final VoidCallback? onReject;
+  final VoidCallback onViewDocuments;
   final VoidCallback onToggleActive;
   final VoidCallback onImpersonate;
 
@@ -358,13 +431,41 @@ class _VendorSummaryCard extends StatelessWidget {
             const SizedBox(height: 16),
             Wrap(
               spacing: 12,
+              runSpacing: 12,
               children: [
-                if (onVerify != null)
+                // New Approve/Reject buttons (modern workflow)
+                if (onApprove != null)
+                  FilledButton.icon(
+                    onPressed: onApprove,
+                    icon: const Icon(Icons.check_circle),
+                    label: const Text('Verify'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.green,
+                    ),
+                  ),
+                if (onReject != null)
+                  FilledButton.icon(
+                    onPressed: onReject,
+                    icon: const Icon(Icons.cancel),
+                    label: const Text('Reject'),
+                    style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                  ),
+
+                // View Documents button
+                OutlinedButton.icon(
+                  onPressed: onViewDocuments,
+                  icon: const Icon(Icons.folder_open),
+                  label: const Text('Documents'),
+                ),
+
+                // Legacy verify button (kept for compatibility)
+                if (onVerify != null && onApprove == null)
                   FilledButton.icon(
                     onPressed: onVerify,
                     icon: const Icon(Icons.verified_outlined),
                     label: const Text('Verify'),
                   ),
+
                 OutlinedButton.icon(
                   onPressed: onToggleActive,
                   icon: Icon(vendor.isActive ? Icons.pause : Icons.play_arrow),

@@ -1,3 +1,22 @@
+## Quick Start
+
+### Running the Admin Panel
+
+**Web (recommended for admin):**
+```bash
+flutter run -d chrome --web-port=46633 --web-hostname=localhost
+```
+The app will be available at `http://localhost:46633`
+
+**VS Code:** Press F5 to launch with the configured web port (46633)
+
+**Mobile/Desktop:**
+```bash
+flutter run
+```
+
+---
+
 ## Admin Foundations
 
 - **Admin token**: set once at runtime via `AdminConfig.adminToken = '<ADMIN_TOKEN>'` (or wire a secure storage fetch). All `requestAdmin` calls automatically attach `X-Admin-Token`.

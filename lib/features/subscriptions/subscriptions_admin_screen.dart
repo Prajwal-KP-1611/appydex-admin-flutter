@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/api_client.dart';
 import '../../models/subscription.dart';
 import '../../providers/subscriptions_provider.dart';
 import '../../routes.dart';
@@ -17,9 +16,8 @@ class SubscriptionsAdminScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final notifier = ref.read(subscriptionsProvider.notifier);
     final state = ref.watch(subscriptionsProvider);
-    final lastTrace = ref.watch(lastTraceIdProvider);
+    final notifier = ref.read(subscriptionsProvider.notifier);
     final data = state.data.valueOrNull;
     final rows = data?.items ?? const <Subscription>[];
 
@@ -121,15 +119,21 @@ class SubscriptionsAdminScreen extends ConsumerWidget {
                   DataTableSimpleColumn(label: 'Plan', flex: 2),
                   DataTableSimpleColumn(label: 'Status', flex: 1),
                   DataTableSimpleColumn(label: 'Dates', flex: 2),
-                  DataTableSimpleColumn(label: 'Paid months', flex: 1),
+                  DataTableSimpleColumn(label: 'Auto Renew', flex: 1),
                   DataTableSimpleColumn(label: 'Actions', flex: 2),
                 ],
                 rows: rows
                     .map(
                       (subscription) => [
                         Text('#${subscription.id}'),
-                        Text(subscription.vendorId.toString()),
-                        Text(subscription.planCode),
+                        Text(
+                          subscription.vendorName ??
+                              subscription.vendorId.toString(),
+                        ),
+                        Text(
+                          subscription.planName ??
+                              subscription.planId.toString(),
+                        ),
                         StatusChip(
                           label: subscription.status,
                           color: subscription.status == 'active'
@@ -137,54 +141,50 @@ class SubscriptionsAdminScreen extends ConsumerWidget {
                               : Colors.orange,
                         ),
                         Text(
-                          '${subscription.startAt?.toLocal() ?? '-'} \n→ ${subscription.endAt?.toLocal() ?? '-'}',
+                          '${subscription.startsAt.toLocal()} \n→ ${subscription.expiresAt.toLocal()}',
                         ),
-                        Text('${subscription.paidMonths}'),
-                        TextButton(
-                          onPressed: () async {
-                            final controller = TextEditingController(text: '3');
-                            final result = await showDialog<int>(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                title: Text(
-                                  'Activate subscription #${subscription.id}',
-                                ),
-                                content: TextField(
-                                  controller: controller,
-                                  keyboardType: TextInputType.number,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Paid months',
-                                  ),
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context),
-                                    child: const Text('Cancel'),
-                                  ),
-                                  FilledButton(
-                                    onPressed: () => Navigator.pop(
-                                      context,
-                                      int.tryParse(controller.text),
+                        Text(subscription.autoRenew ? 'Yes' : 'No'),
+                        Row(
+                          children: [
+                            TextButton(
+                              onPressed: () async {
+                                final confirmed = await showDialog<bool>(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: Text(
+                                      'Cancel subscription #${subscription.id}',
                                     ),
-                                    child: const Text('Activate'),
+                                    content: const Text(
+                                      'Are you sure you want to cancel this subscription?',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, false),
+                                        child: const Text('No'),
+                                      ),
+                                      FilledButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, true),
+                                        child: const Text('Yes, Cancel'),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                            );
-                            if (result == null) return;
-                            await notifier.activate(
-                              subscription.id,
-                              paidMonths: result,
-                            );
-                            if (!context.mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              buildTraceSnackbar(
-                                'Subscription activated',
-                                traceId: lastTrace,
-                              ),
-                            );
-                          },
-                          child: const Text('Activate'),
+                                );
+                                if (confirmed != true) return;
+                                // TODO: Implement cancel method in provider
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Cancel functionality not yet implemented',
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: const Text('Cancel'),
+                            ),
+                          ],
                         ),
                       ],
                     )

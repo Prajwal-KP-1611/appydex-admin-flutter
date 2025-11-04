@@ -36,14 +36,14 @@ class AuditRepository {
 
     try {
       final response = await _client.requestAdmin<Map<String, dynamic>>(
-        '/admin/audit-events',
+        '/admin/audit',
         queryParameters: params,
       );
       final body = response.data ?? <String, dynamic>{};
       return Pagination.fromJson(body, (item) => AuditEvent.fromJson(item));
     } on DioException catch (error) {
       if (error.response?.statusCode == 404) {
-        throw AdminEndpointMissing('admin/audit-events');
+        throw AdminEndpointMissing('admin/audit');
       }
       rethrow;
     }

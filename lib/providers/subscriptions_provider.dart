@@ -102,10 +102,9 @@ class SubscriptionsNotifier extends StateNotifier<SubscriptionsState> {
           ? _mock.subscriptions(page: filter.page, pageSize: filter.pageSize)
           : await _repo.list(
               vendorId: filter.vendorId,
-              planCode: filter.planCode,
               status: filter.status,
-              page: filter.page,
-              pageSize: filter.pageSize,
+              skip: (filter.page - 1) * filter.pageSize,
+              limit: filter.pageSize,
             );
       state = state.copyWith(
         data: AsyncValue.data(result),
@@ -135,25 +134,6 @@ class SubscriptionsNotifier extends StateNotifier<SubscriptionsState> {
     load(override: state.filter.copyWith(page: page));
   }
 
-  Future<void> activate(int subscriptionId, {required int paidMonths}) async {
-    try {
-      if (state.usingMock) {
-        await load(forceMock: true);
-        return;
-      }
-      await _repo.activate(
-        subscriptionId: subscriptionId,
-        paidMonths: paidMonths,
-      );
-      await load();
-    } on AdminEndpointMissing catch (missing) {
-      state = state.copyWith(missingEndpoint: missing, usingMock: true);
-      await load(forceMock: true);
-    } catch (error, stack) {
-      state = state.copyWith(data: AsyncValue.error(error, stack));
-    }
-  }
-
   void useMock() => load(forceMock: true);
 
   String exportCurrentCsv() {
@@ -163,11 +143,13 @@ class SubscriptionsNotifier extends StateNotifier<SubscriptionsState> {
           (subscription) => {
             'id': subscription.id,
             'vendor_id': subscription.vendorId,
-            'plan_code': subscription.planCode,
+            'vendor_name': subscription.vendorName ?? '',
+            'plan_id': subscription.planId,
+            'plan_name': subscription.planName ?? '',
             'status': subscription.status,
-            'start_at': subscription.startAt?.toIso8601String() ?? '',
-            'end_at': subscription.endAt?.toIso8601String() ?? '',
-            'paid_months': subscription.paidMonths,
+            'starts_at': subscription.startsAt.toIso8601String(),
+            'expires_at': subscription.expiresAt.toIso8601String(),
+            'auto_renew': subscription.autoRenew,
           },
         )
         .toList();

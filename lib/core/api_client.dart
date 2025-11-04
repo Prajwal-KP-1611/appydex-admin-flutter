@@ -149,15 +149,33 @@ class ApiClient {
     dynamic data,
     Options? options,
   }) {
+    final hasBody =
+        (method == 'POST' || method == 'PUT' || method == 'PATCH') &&
+        data != null;
+
+    // Explicitly encode data as JSON for POST/PUT/PATCH
+    final requestData = hasBody && data is Map ? jsonEncode(data) : data;
+
     final mergedOptions = (options ?? Options()).copyWith(
       method: method,
       extra: {...?options?.extra, 'admin': true},
+      headers: {
+        ...?options?.headers,
+        if (hasBody) 'Content-Type': 'application/json',
+      },
     );
+
+    // Debug print for troubleshooting
+    if (hasBody || method == 'DELETE') {
+      debugPrint('[ApiClient] $method $path');
+      debugPrint('Headers: ${mergedOptions.headers}');
+      if (hasBody) debugPrint('Body: ${requestData}');
+    }
 
     return _dio.request<T>(
       path,
       queryParameters: queryParameters,
-      data: data,
+      data: requestData,
       options: mergedOptions,
     );
   }
@@ -190,22 +208,62 @@ class ApiClient {
     final token = await _tokenStorage.readAccessToken();
     if (token != null && token.isNotEmpty) {
       options.headers['Authorization'] = 'Bearer $token';
+      if (kDebugMode) {
+        debugPrint(
+          '[ApiClient] Added Authorization header for ${options.method} ${options.path}',
+        );
+      }
+    } else {
+      if (kDebugMode) {
+        debugPrint(
+          '[ApiClient WARNING] No access token for ${options.method} ${options.path}',
+        );
+      }
     }
 
     final idempotencyKey = options.extra['idempotencyKey'] as String?;
-    if (idempotencyKey != null && idempotencyKey.isNotEmpty) {
+    // On web, DELETE requests can fail due to CORS if custom headers
+    // like Idempotency-Key are not explicitly allowed by the server.
+    // To improve compatibility, omit the header for DELETE on web.
+    final isDelete = options.method.toUpperCase() == 'DELETE';
+    final sendIdempotencyHeader =
+        idempotencyKey != null &&
+        idempotencyKey.isNotEmpty &&
+        !(kIsWeb && isDelete);
+    if (sendIdempotencyHeader) {
       options.headers['Idempotency-Key'] = idempotencyKey;
     }
 
     if (_isAdminRequest(options)) {
       final adminToken =
           _ref.read(adminTokenProvider) ?? AdminConfig.adminToken;
+      if (kDebugMode) {
+        debugPrint(
+          '[ApiClient] _isAdminRequest=true for ${options.method} ${options.path}, adminToken=${adminToken != null ? "SET" : "NULL"}',
+        );
+      }
       if (adminToken != null && adminToken.isNotEmpty) {
         options.headers['X-Admin-Token'] = adminToken;
+        if (kDebugMode) {
+          debugPrint(
+            '[ApiClient] Added X-Admin-Token for ${options.method} ${options.path}',
+          );
+        }
       } else {
         options.headers.remove('X-Admin-Token');
+        if (kDebugMode) {
+          debugPrint(
+            '[ApiClient WARNING] No admin token for ${options.method} ${options.path}',
+          );
+        }
       }
       options.extra['admin'] = true;
+    } else {
+      if (kDebugMode) {
+        debugPrint(
+          '[ApiClient] _isAdminRequest=FALSE for ${options.method} ${options.path}',
+        );
+      }
     }
 
     _applySendTimeoutPolicy(
@@ -213,6 +271,17 @@ class ApiClient {
       isWeb: kIsWeb,
       defaultTimeout: _dio.options.sendTimeout ?? const Duration(seconds: 10),
     );
+
+    // Debug print AFTER all headers are added
+    if (kDebugMode &&
+        (options.method == 'DELETE' ||
+            options.method == 'POST' ||
+            options.method == 'PUT' ||
+            options.method == 'PATCH')) {
+      debugPrint('[ApiClient FINAL] ${options.method} ${options.uri}');
+      debugPrint('All Headers: ${options.headers}');
+      if (options.data != null) debugPrint('Body: ${options.data}');
+    }
 
     handler.next(options);
   }
@@ -241,6 +310,14 @@ class ApiClient {
     if (traceId != null) {
       _ref.read(lastTraceIdProvider.notifier).state = traceId;
     }
+
+    // Debug print error response
+    debugPrint(
+      '[ApiClient ERROR] ${error.requestOptions.method} ${error.requestOptions.uri}',
+    );
+    debugPrint('Status Code: ${error.response?.statusCode}');
+    debugPrint('Response Data: ${error.response?.data}');
+    debugPrint('Response Headers: ${error.response?.headers}');
 
     if (_shouldAttemptRefresh(error)) {
       try {

@@ -66,76 +66,78 @@ class DataTableSimple extends StatelessWidget {
     final theme = Theme.of(context);
     final totalPages = (total / pageSize).ceil().clamp(1, 1 << 31);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minWidth: 600),
-            child: Table(
-              columnWidths: {
-                for (var i = 0; i < columns.length; i++)
-                  i: FlexColumnWidth(columns[i].flex.toDouble()),
-              },
-              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-              children: [
-                TableRow(
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                  ),
-                  children: columns
-                      .map(
-                        (column) => Padding(
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 12,
-                            horizontal: 16,
-                          ),
-                          child: Text(
-                            column.label,
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                            textAlign: column.numeric
-                                ? TextAlign.end
-                                : TextAlign.start,
-                          ),
-                        ),
-                      )
-                      .toList(),
-                ),
-                for (final row in rows)
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 600),
+              child: Table(
+                columnWidths: {
+                  for (var i = 0; i < columns.length; i++)
+                    i: FlexColumnWidth(columns[i].flex.toDouble()),
+                },
+                defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                children: [
                   TableRow(
                     decoration: BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(
-                          color: theme.dividerColor.withValues(alpha: 0.1),
+                      color: theme.colorScheme.surfaceContainerHighest,
+                    ),
+                    children: columns
+                        .map(
+                          (column) => Padding(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 12,
+                              horizontal: 16,
+                            ),
+                            child: Text(
+                              column.label,
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                              textAlign: column.numeric
+                                  ? TextAlign.end
+                                  : TextAlign.start,
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                  for (final row in rows)
+                    TableRow(
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(
+                            color: theme.dividerColor.withValues(alpha: 0.1),
+                          ),
                         ),
                       ),
-                    ),
-                    children: [
-                      for (var i = 0; i < columns.length; i++)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 12,
-                            horizontal: 16,
+                      children: [
+                        for (var i = 0; i < columns.length; i++)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 12,
+                              horizontal: 16,
+                            ),
+                            child: row.elementAt(i),
                           ),
-                          child: row.elementAt(i),
-                        ),
-                    ],
-                  ),
-              ],
+                      ],
+                    ),
+                ],
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 16),
-        if (onPageChange != null)
-          _PaginationControls(
-            page: page,
-            totalPages: totalPages,
-            onPageChange: onPageChange!,
-          ),
-      ],
+          const SizedBox(height: 16),
+          if (onPageChange != null)
+            _PaginationControls(
+              page: page,
+              totalPages: totalPages,
+              onPageChange: onPageChange!,
+            ),
+        ],
+      ),
     );
   }
 }
@@ -209,24 +211,54 @@ class _ErrorCard extends StatelessWidget {
         ? 'Admin endpoint ${(error as AdminEndpointMissing).endpoint} is missing. Please ask backend to implement it or use mock data.'
         : error.toString();
 
-    return Card(
-      color: theme.colorScheme.errorContainer,
+    return Container(
+      margin: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFEBEE), // Light red background
+        border: Border.all(
+          color: const Color(0xFFD32F2F),
+          width: 2,
+        ), // Dark red border
+        borderRadius: BorderRadius.circular(8),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Unable to load data',
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: theme.colorScheme.onErrorContainer,
-              ),
+            Row(
+              children: [
+                const Icon(
+                  Icons.error_outline,
+                  color: Color(0xFFD32F2F), // Dark red icon
+                  size: 28,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Unable to load data',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: const Color(0xFFD32F2F), // Dark red text
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            Text(
-              description,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onErrorContainer,
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: SelectableText(
+                description,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: const Color(
+                    0xFF424242,
+                  ), // Dark gray text for better readability
+                  fontFamily: 'monospace',
+                  fontSize: 14,
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -235,11 +267,23 @@ class _ErrorCard extends StatelessWidget {
               runSpacing: 12,
               children: [
                 if (onRetry != null)
-                  FilledButton(onPressed: onRetry, child: const Text('Retry')),
+                  FilledButton.icon(
+                    onPressed: onRetry,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Retry'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFFD32F2F),
+                    ),
+                  ),
                 if (endpointMissing && onUseMock != null)
-                  OutlinedButton(
+                  OutlinedButton.icon(
                     onPressed: onUseMock,
-                    child: const Text('Use mock data'),
+                    icon: const Icon(Icons.science),
+                    label: const Text('Use mock data'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFFD32F2F),
+                      side: const BorderSide(color: Color(0xFFD32F2F)),
+                    ),
                   ),
               ],
             ),

@@ -37,14 +37,10 @@ class _FakeVendorRepository implements VendorRepository {
 
   @override
   Future<Pagination<Vendor>> list({
-    String? query,
+    int skip = 0,
+    int limit = 100,
     String? status,
-    String? planCode,
-    bool? verified,
-    DateTime? createdAfter,
-    DateTime? createdBefore,
-    int page = 1,
-    int pageSize = 20,
+    String? search,
   }) async {
     return _page;
   }
@@ -59,6 +55,40 @@ class _FakeVendorRepository implements VendorRepository {
       notes: changes['notes'] as String? ?? _page.items.first.notes,
     );
   }
+
+  @override
+  Future<VendorVerificationResult> verifyOrReject({
+    required int id,
+    required String action,
+    String? notes,
+  }) async {
+    patchCalls++;
+    return VendorVerificationResult(
+      vendorId: id,
+      status: action == 'approve' ? 'verified' : 'rejected',
+      verifiedAt: DateTime.now(),
+      notes: notes,
+    );
+  }
+
+  @override
+  Future<Vendor> verify(int id, {String? notes}) async {
+    patchCalls++;
+    return _page.items.first.copyWith(isVerified: true, notes: notes);
+  }
+
+  @override
+  Future<Vendor> reject(int id, {required String reason}) async {
+    patchCalls++;
+    return _page.items.first.copyWith(isVerified: false, notes: reason);
+  }
+
+  @override
+  Future<List<VendorDocument>> getDocuments(int vendorId) async => [];
+
+  @override
+  Future<List<Vendor>> bulkVerify(List<int> vendorIds, {String? notes}) async =>
+      [];
 }
 
 void main() {
