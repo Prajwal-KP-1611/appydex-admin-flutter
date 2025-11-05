@@ -16,12 +16,13 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _otpRequested = false;
-  
+  bool _loginSuccessful = false; // Prevent UI reset during navigation
+
   Future<void> _requestOtp() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
-    
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -31,7 +32,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final result = await otpRepo.requestOtp(
         emailOrPhone: _emailController.text.trim(),
       );
-      
+
       // Persist OTP requested state
       setState(() {
         _otpRequested = true;
@@ -138,6 +139,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             otp: _otpController.text.trim(),
           );
 
+      // Mark login as successful to prevent UI from resetting
+      _loginSuccessful = true;
+
       // Persist last route and navigate by clearing the stack to avoid
       // returning to the login screen via back or stale hash.
       if (mounted) {
@@ -223,6 +227,37 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
+
+    // Show loading screen if login was successful to prevent UI from resetting
+    if (_loginSuccessful) {
+      return Scaffold(
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppTheme.primaryDeepBlue,
+                AppTheme.primaryDeepBlue.withOpacity(0.8),
+              ],
+            ),
+          ),
+          child: const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(color: Colors.white),
+                SizedBox(height: 16),
+                Text(
+                  'Logging in...',
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       body: Container(
@@ -369,8 +404,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   .withOpacity(0.3),
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                color: theme.colorScheme.primary
-                                    .withOpacity(0.3),
+                                color: theme.colorScheme.primary.withOpacity(
+                                  0.3,
+                                ),
                               ),
                             ),
                             child: Row(

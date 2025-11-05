@@ -73,16 +73,18 @@ class OtpRequestResult {
 
     // Build user-friendly message (don't expose OTP in production)
     String displayMessage = message ?? 'OTP sent successfully';
-    
+
     // For development/testing: Log OTP to console instead of showing in UI
     if (otpEmail != null) {
       // ignore: avoid_print
       print('🔐 [DEV] Email OTP: $otpEmail');
-      displayMessage += '\n\n✅ Email OTP sent!\n\nFor testing, check console output.';
+      displayMessage +=
+          '\n\n✅ Email OTP sent!\n\nFor testing, check console output.';
     } else if (otpPhone != null) {
       // ignore: avoid_print
       print('🔐 [DEV] Phone OTP: $otpPhone');
-      displayMessage += '\n\n✅ Phone OTP sent!\n\nFor testing, check console output.';
+      displayMessage +=
+          '\n\n✅ Phone OTP sent!\n\nFor testing, check console output.';
     } else {
       displayMessage += '\n\nPlease check your email/phone for the OTP code.';
     }
