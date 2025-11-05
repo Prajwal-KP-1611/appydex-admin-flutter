@@ -69,23 +69,49 @@ class AdminSession {
   final DateTime? expiresAt;
 
   factory AdminSession.fromJson(Map<String, dynamic> json) {
+    print('[AdminSession.fromJson] Input JSON keys: ${json.keys.join(", ")}');
+
     // Handle backend response format: { access, refresh, user: { roles, ... } }
     final userData = json['user'] as Map<String, dynamic>?;
+    print(
+      '[AdminSession.fromJson] User data: ${userData != null ? userData.keys.join(", ") : "null"}',
+    );
+
     final rolesData =
         (userData?['roles'] ?? json['roles']) as List<dynamic>? ?? [];
     final roles = rolesData
         .map((r) => AdminRole.fromString(r.toString()))
         .toList();
 
+    // Priority order for finding active role:
+    // 1. json['active_role'] (root level)
+    // 2. userData['active_role']
+    // 3. First role from roles array if it contains super_admin
+    // 4. First role from roles array
+    // 5. Default to support_admin
+    // Note: userData['role'] is often just "admin" and not helpful
     final activeRoleStr =
-        (userData?['active_role'] ??
-                userData?['role'] ??
-                json['active_role'] ??
-                json['role'])
-            as String?;
+        (json['active_role'] ?? userData?['active_role']) as String?;
+    print('[AdminSession.fromJson] activeRoleStr from JSON: $activeRoleStr');
+    print('[AdminSession.fromJson] roles array: ${rolesData.join(", ")}');
+
+    // Determine active role with a sane default:
+    // 1) If backend provides active_role -> use it
+    // 2) Else, if user has Super Admin among roles -> prefer Super Admin
+    // 3) Else, fall back to first available role or Support Admin
     final activeRole = activeRoleStr != null
         ? AdminRole.fromString(activeRoleStr)
-        : (roles.isNotEmpty ? roles.first : AdminRole.supportAdmin);
+        : (roles.contains(AdminRole.superAdmin)
+              ? AdminRole.superAdmin
+              : (roles.isNotEmpty ? roles.first : AdminRole.supportAdmin));
+
+    print(
+      '[AdminSession.fromJson] Parsed roles: ${roles.map((r) => r.displayName).join(", ")}',
+    );
+    print('[AdminSession.fromJson] Active role: ${activeRole.displayName}');
+
+    final email = (userData?['email'] ?? json['email']) as String?;
+    print('[AdminSession.fromJson] Email: $email');
 
     return AdminSession(
       accessToken: (json['access'] ?? json['access_token']) as String? ?? '',
@@ -93,7 +119,7 @@ class AdminSession {
       roles: roles,
       activeRole: activeRole,
       adminId: (userData?['id']?.toString() ?? json['admin_id']) as String?,
-      email: (userData?['email'] ?? json['email']) as String?,
+      email: email,
       expiresAt: json['expires_at'] != null
           ? DateTime.parse(json['expires_at'] as String)
           : null,
@@ -101,10 +127,20 @@ class AdminSession {
   }
 
   Map<String, dynamic> toJson() => {
-    'access_token': accessToken,
-    'refresh_token': refreshToken,
+    'access': accessToken, // Match backend format
+    'refresh': refreshToken, // Match backend format
+    'access_token': accessToken, // Also include for compatibility
+    'refresh_token': refreshToken, // Also include for compatibility
+    'user': {
+      'id': adminId,
+      'email': email,
+      'roles': roles.map((r) => r.value).toList(),
+      'active_role': activeRole.value,
+      'role': activeRole.value, // Also include for compatibility
+    },
     'roles': roles.map((r) => r.value).toList(),
     'active_role': activeRole.value,
+    'role': activeRole.value,
     'admin_id': adminId,
     'email': email,
     'expires_at': expiresAt?.toIso8601String(),

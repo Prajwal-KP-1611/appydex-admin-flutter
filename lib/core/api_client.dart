@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
-import 'admin_config.dart';
+// AdminConfig and legacy X-Admin-Token removed — admin endpoints use JWT Bearer now.
 import 'auth/token_storage.dart';
 import 'config.dart';
 
@@ -169,7 +169,7 @@ class ApiClient {
     if (hasBody || method == 'DELETE') {
       debugPrint('[ApiClient] $method $path');
       debugPrint('Headers: ${mergedOptions.headers}');
-      if (hasBody) debugPrint('Body: ${requestData}');
+      if (hasBody) debugPrint('Body: $requestData');
     }
 
     return _dio.request<T>(
@@ -234,30 +234,15 @@ class ApiClient {
       options.headers['Idempotency-Key'] = idempotencyKey;
     }
 
+    // Admin requests are marked for diagnostics but no longer include a
+    // legacy X-Admin-Token header. The server must accept JWT Bearer tokens.
     if (_isAdminRequest(options)) {
-      final adminToken =
-          _ref.read(adminTokenProvider) ?? AdminConfig.adminToken;
+      options.extra['admin'] = true;
       if (kDebugMode) {
         debugPrint(
-          '[ApiClient] _isAdminRequest=true for ${options.method} ${options.path}, adminToken=${adminToken != null ? "SET" : "NULL"}',
+          '[ApiClient] _isAdminRequest=true for ${options.method} ${options.path}',
         );
       }
-      if (adminToken != null && adminToken.isNotEmpty) {
-        options.headers['X-Admin-Token'] = adminToken;
-        if (kDebugMode) {
-          debugPrint(
-            '[ApiClient] Added X-Admin-Token for ${options.method} ${options.path}',
-          );
-        }
-      } else {
-        options.headers.remove('X-Admin-Token');
-        if (kDebugMode) {
-          debugPrint(
-            '[ApiClient WARNING] No admin token for ${options.method} ${options.path}',
-          );
-        }
-      }
-      options.extra['admin'] = true;
     } else {
       if (kDebugMode) {
         debugPrint(

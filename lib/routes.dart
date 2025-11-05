@@ -6,6 +6,7 @@ enum AppRoute {
   vendorDetail('/vendors/detail'),
   users('/users'),
   services('/services'),
+  serviceTypeRequests('/service-type-requests'),
   plans('/plans'),
   subscriptions('/subscriptions'),
   campaigns('/campaigns'),

@@ -127,7 +127,7 @@ class _PaymentsListScreenState extends ConsumerState<PaymentsListScreen> {
                         const SizedBox(height: 16),
                         Text(
                           _statusFilter != null
-                              ? 'No ${_statusFilter} payments found'
+                              ? 'No $_statusFilter payments found'
                               : 'No payment intents yet',
                           style: const TextStyle(
                             fontSize: 18,

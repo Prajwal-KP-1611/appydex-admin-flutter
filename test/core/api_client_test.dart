@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:appydex_admin/core/api_client.dart' as api_client;
-import 'package:appydex_admin/core/admin_config.dart';
 import 'package:appydex_admin/core/auth/token_storage.dart';
 import 'package:appydex_admin/core/config.dart';
 
@@ -160,57 +159,33 @@ _createClient({bool failRefresh = false}) async {
 }
 
 void main() {
-  test('requestAdmin injects admin token header', () async {
-    final setup = await _createClient();
-    addTearDown(() {
-      setup.container.dispose();
-      AdminConfig.adminToken = null;
-    });
+  test(
+    'requestAdmin marks request as admin but does not send X-Admin-Token',
+    () async {
+      final setup = await _createClient();
+      addTearDown(() {
+        setup.container.dispose();
+      });
 
-    AdminConfig.adminToken = 'test-token';
+      late RequestOptions captured;
+      setup.client.dio.httpClientAdapter = CapturingAdapter((options) async {
+        captured = options;
+        return ResponseBody.fromString(
+          '{"items":[],"total":0,"page":1,"page_size":20}',
+          200,
+          headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType],
+          },
+        );
+      });
 
-    late RequestOptions captured;
-    setup.client.dio.httpClientAdapter = CapturingAdapter((options) async {
-      captured = options;
-      return ResponseBody.fromString(
-        '{"items":[],"total":0,"page":1,"page_size":20}',
-        200,
-        headers: {
-          Headers.contentTypeHeader: [Headers.jsonContentType],
-        },
-      );
-    });
+      await setup.client.requestAdmin<Map<String, dynamic>>('/admin/vendors');
 
-    await setup.client.requestAdmin<Map<String, dynamic>>('/admin/vendors');
-
-    expect(captured.headers['X-Admin-Token'], 'test-token');
-    expect(captured.extra['admin'], isTrue);
-  });
-
-  test('requestAdmin skips admin header when token missing', () async {
-    final setup = await _createClient();
-    addTearDown(() {
-      setup.container.dispose();
-      AdminConfig.adminToken = null;
-    });
-
-    late RequestOptions captured;
-    setup.client.dio.httpClientAdapter = CapturingAdapter((options) async {
-      captured = options;
-      return ResponseBody.fromString(
-        '{"items":[],"total":0,"page":1,"page_size":20}',
-        200,
-        headers: {
-          Headers.contentTypeHeader: [Headers.jsonContentType],
-        },
-      );
-    });
-
-    await setup.client.requestAdmin<Map<String, dynamic>>('/admin/vendors');
-
-    expect(captured.headers['X-Admin-Token'], isNull);
-    expect(captured.extra['admin'], isTrue);
-  });
+      expect(captured.extra['admin'], isTrue);
+      // X-Admin-Token is deprecated; client should not send it.
+      expect(captured.headers.containsKey('X-Admin-Token'), isFalse);
+    },
+  );
 
   test('refreshes once on 401 and retries request', () async {
     final setup = await _createClient();

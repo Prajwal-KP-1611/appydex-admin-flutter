@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:appydex_admin/core/admin_config.dart';
 import 'package:appydex_admin/core/api_client.dart';
 import 'package:appydex_admin/core/auth/token_storage.dart';
 import 'package:appydex_admin/core/config.dart';
@@ -75,14 +74,6 @@ _bootstrapWithAdapter(HttpClientAdapter adapter) async {
 }
 
 void main() {
-  setUp(() {
-    AdminConfig.adminToken = 'test-token';
-  });
-
-  tearDown(() {
-    AdminConfig.adminToken = null;
-  });
-
   test('list returns pagination from admin endpoint', () async {
     late RequestOptions captured;
     final adapter = _StaticAdapter((options) async {
@@ -103,7 +94,8 @@ void main() {
 
     expect(page.items, hasLength(1));
     expect(page.items.first.name, 'Acme');
-    expect(captured.headers['X-Admin-Token'], 'test-token');
+    // X-Admin-Token is deprecated; client should not send it.
+    expect(captured.headers.containsKey('X-Admin-Token'), isFalse);
     expect(captured.path, '/admin/vendors');
   });
 

@@ -129,7 +129,7 @@ class _CreditPromoDaysDialogState extends ConsumerState<CreditPromoDaysDialog> {
 
                 // Campaign type dropdown
                 DropdownButtonFormField<String>(
-                  value: _campaignType,
+                  initialValue: _campaignType,
                   decoration: const InputDecoration(
                     labelText: 'Campaign Type *',
                     border: OutlineInputBorder(),

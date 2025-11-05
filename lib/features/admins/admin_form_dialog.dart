@@ -381,7 +381,7 @@ class _AdminFormDialogState extends ConsumerState<AdminFormDialog> {
                           ),
                           const SizedBox(height: 8),
                           DropdownButtonFormField<AdminRole>(
-                            value: _selectedRole,
+                            initialValue: _selectedRole,
                             decoration: const InputDecoration(
                               hintText: 'Select role',
                               border: OutlineInputBorder(),

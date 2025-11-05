@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/auth/auth_service.dart';
 import '../../routes.dart';
 
 class AdminScaffold extends ConsumerWidget {
@@ -110,12 +111,12 @@ class AdminScaffold extends ConsumerWidget {
                             _buildSectionHeader(context, 'MANAGEMENT'),
                             _buildNavItem(
                               context,
-                              _navigationItems[1],
+                              _navigationItems[1], // Admin Users
                               currentRoute,
                             ),
                             _buildNavItem(
                               context,
-                              _navigationItems[2],
+                              _navigationItems[2], // Vendors
                               currentRoute,
                             ),
                             _buildNavItem(
@@ -130,7 +131,12 @@ class AdminScaffold extends ConsumerWidget {
                             ),
                             _buildNavItem(
                               context,
-                              _navigationItems[3],
+                              _navigationItems[3], // Service Catalog
+                              currentRoute,
+                            ),
+                            _buildNavItem(
+                              context,
+                              _navigationItems[4], // Service Type Requests ← ADD THIS
                               currentRoute,
                             ),
                             const SizedBox(height: 8),
@@ -149,7 +155,7 @@ class AdminScaffold extends ConsumerWidget {
                             ),
                             _buildNavItem(
                               context,
-                              _navigationItems[4],
+                              _navigationItems[5], // Subscriptions
                               currentRoute,
                             ),
                             _buildNavItem(
@@ -192,7 +198,7 @@ class AdminScaffold extends ConsumerWidget {
                             _buildSectionHeader(context, 'SYSTEM'),
                             _buildNavItem(
                               context,
-                              _navigationItems[5],
+                              _navigationItems[6], // Audit Logs
                               currentRoute,
                             ),
                             _buildNavItem(
@@ -207,12 +213,15 @@ class AdminScaffold extends ConsumerWidget {
                             ),
                             _buildNavItem(
                               context,
-                              _navigationItems[6],
+                              _navigationItems[7], // Diagnostics
                               currentRoute,
                             ),
                           ],
                         ),
                       ),
+                      // Logout button at bottom
+                      const Divider(height: 1),
+                      _buildLogoutButton(context, ref),
                     ],
                   ),
                 ),
@@ -313,10 +322,77 @@ class AdminScaffold extends ConsumerWidget {
   }
 
   void _navigate(BuildContext context, _AdminNavItem item) {
-    if (ModalRoute.of(context)?.settings.name == item.route.path) {
+    final currentRouteName = ModalRoute.of(context)?.settings.name;
+    print('[Navigation] From: $currentRouteName → To: ${item.route.path}');
+
+    if (currentRouteName == item.route.path) {
+      print('[Navigation] Already on ${item.route.path}, skipping navigation');
       return;
     }
+
+    print('[Navigation] Navigating to ${item.label} (${item.route.path})');
     Navigator.of(context).pushReplacementNamed(item.route.path);
+  }
+
+  Widget _buildLogoutButton(BuildContext context, WidgetRef ref) {
+    final session = ref.watch(adminSessionProvider);
+    final email = session?.email ?? 'Unknown';
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (session != null) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    email,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    session.activeRole.displayName,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withOpacity(0.6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () async {
+                await ref.read(adminSessionProvider.notifier).logout();
+                if (context.mounted) {
+                  Navigator.of(context).pushReplacementNamed('/login');
+                }
+              },
+              icon: const Icon(Icons.logout, size: 18),
+              label: const Text('Logout'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error,
+                side: BorderSide(
+                  color: Theme.of(context).colorScheme.error.withOpacity(0.5),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -347,6 +423,12 @@ const _navigationItems = [
     AppRoute.services,
     'Service Catalog',
     Icons.category_outlined,
+    section: 'management',
+  ),
+  _AdminNavItem(
+    AppRoute.serviceTypeRequests,
+    'Service Type Requests',
+    Icons.pending_actions_outlined,
     section: 'management',
   ),
   _AdminNavItem(

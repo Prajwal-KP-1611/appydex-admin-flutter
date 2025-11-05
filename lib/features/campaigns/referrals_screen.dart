@@ -303,7 +303,7 @@ class _ReferralsTabState extends ConsumerState<_ReferralsTab> {
                       const SizedBox(height: 16),
                       Text(
                         _statusFilter != null
-                            ? 'No ${_statusFilter} referrals found'
+                            ? 'No $_statusFilter referrals found'
                             : 'No referrals yet',
                         style: const TextStyle(
                           fontSize: 18,

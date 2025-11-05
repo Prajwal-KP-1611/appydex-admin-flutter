@@ -51,6 +51,7 @@ class _FakeVendorRepository implements VendorRepository {
 
   @override
   Future<Vendor> patch(int id, Map<String, dynamic> changes) async {
+    patchCalls++;
     return _baseVendor.copyWith(
       isVerified: changes['is_verified'] as bool? ?? _baseVendor.isVerified,
       isActive: changes['is_active'] as bool? ?? _baseVendor.isActive,

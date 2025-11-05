@@ -12,6 +12,7 @@ import 'features/auth/change_password_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/dashboard/dashboard_screen.dart';
 import 'features/diagnostics/diagnostics_screen.dart';
+import 'features/service_type_requests/requests_list_screen.dart';
 import 'features/services/services_list_screen.dart';
 import 'features/subscriptions/subscriptions_admin_screen.dart';
 import 'features/vendors/vendor_detail_screen.dart';
@@ -82,6 +83,7 @@ class _AppydexAdminAppState extends ConsumerState<AppydexAdminApp> {
           '/diagnostics',
           '/users',
           '/services',
+          '/service-type-requests',
           '/plans',
           '/campaigns',
           '/reviews',
@@ -156,6 +158,11 @@ class _AppydexAdminAppState extends ConsumerState<AppydexAdminApp> {
             return MaterialPageRoute(
               settings: settings,
               builder: (_) => const ServicesListScreen(),
+            );
+          case '/service-type-requests':
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const ServiceTypeRequestsListScreen(),
             );
           default:
             return MaterialPageRoute(

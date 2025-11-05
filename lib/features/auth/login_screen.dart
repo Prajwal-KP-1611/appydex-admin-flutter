@@ -53,6 +53,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _handleLogin() async {
+    if (_isLoading) return; // prevent duplicate submissions
     if (!_formKey.currentState!.validate()) {
       return;
     }

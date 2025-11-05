@@ -117,7 +117,7 @@ class _ServiceTypeRequestsListScreenState
                         const SizedBox(height: 16),
                         Text(
                           _statusFilter != null
-                              ? 'No ${_statusFilter} requests found'
+                              ? 'No $_statusFilter requests found'
                               : 'No service type requests yet',
                           style: const TextStyle(
                             fontSize: 18,

@@ -83,10 +83,21 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('API Base URL'), findsOneWidget);
-    final textField = tester.widget<TextField>(find.byType(TextField));
+
+    // Find the specific TextField for the API Base URL by its decoration label.
+    final baseFieldFinder = find.byWidgetPredicate((widget) {
+      if (widget is TextField) {
+        final label = widget.decoration?.labelText;
+        return label == 'Override base URL';
+      }
+      return false;
+    });
+    expect(baseFieldFinder, findsOneWidget);
+
+    final textField = tester.widget<TextField>(baseFieldFinder);
     expect(textField.controller?.text, config.apiBaseUrl);
 
-    await tester.enterText(find.byType(TextField), 'https://test.api');
+    await tester.enterText(baseFieldFinder, 'https://test.api');
     await tester.tap(find.text('Save override'));
     await tester.pumpAndSettle();
 

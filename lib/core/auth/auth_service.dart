@@ -1,8 +1,10 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/admin_role.dart';
 import '../api_client.dart';
@@ -59,6 +61,8 @@ class AuthService {
         );
       }
 
+      print('LOGIN RESPONSE: ${jsonEncode(response.data)}');
+
       final session = AdminSession.fromJson(response.data!);
 
       if (!session.isValid) {
@@ -68,11 +72,48 @@ class AuthService {
         );
       }
 
-      // Save session and email for future logins
-      await _saveSession(session);
-      await _storage.write(key: _AuthKeys.lastEmail, value: email);
+      // Fetch user profile to get email if not included in login response
+      AdminSession finalSession = session;
+      if (session.email == null || session.email!.isEmpty) {
+        try {
+          print(
+            '[AuthService.login] Email missing, fetching from /admin/me...',
+          );
+          final meResponse = await _apiClient.dio.get<Map<String, dynamic>>(
+            '/admin/me',
+            options: Options(
+              headers: {'Authorization': 'Bearer ${session.accessToken}'},
+            ),
+          );
 
-      return session;
+          if (meResponse.data != null) {
+            final userEmail = meResponse.data!['email'] as String?;
+            print(
+              '[AuthService.login] Fetched email from /admin/me: $userEmail',
+            );
+            if (userEmail != null) {
+              finalSession = session.copyWith(email: userEmail);
+            }
+          }
+        } catch (e) {
+          print('[AuthService.login] Failed to fetch email from /admin/me: $e');
+          // Continue with session even if email fetch fails
+        }
+      }
+
+      // Fallback: if backend still didn't provide email, use the typed email
+      if (finalSession.email == null || finalSession.email!.isEmpty) {
+        print(
+          '[AuthService.login] Backend did not provide email. Using typed email: $email',
+        );
+        finalSession = finalSession.copyWith(email: email);
+      }
+
+      // Save session and email for future logins
+      await _saveSession(finalSession);
+      await _write(_AuthKeys.lastEmail, email);
+
+      return finalSession;
     } on DioException catch (e) {
       // Try to extract backend error message
       String errorMessage = 'Login failed';
@@ -105,22 +146,93 @@ class AuthService {
   /// Restore session from secure storage
   Future<AdminSession?> restoreSession() async {
     try {
-      final sessionJson = await _storage.read(key: _AuthKeys.session);
+      print('[AuthService.restoreSession] Starting session restoration...');
+      print(
+        '[AuthService.restoreSession] Platform: ${kIsWeb ? "WEB" : "MOBILE/DESKTOP"}',
+      );
+
+      final sessionJson = await _read(_AuthKeys.session);
+      print(
+        '[AuthService.restoreSession] Session JSON length: ${sessionJson?.length ?? 0}',
+      );
+
       if (sessionJson == null || sessionJson.isEmpty) {
+        print('[AuthService.restoreSession] No session data found in storage');
         return null;
       }
 
+      print('[AuthService.restoreSession] Parsing session JSON...');
       final data = jsonDecode(sessionJson) as Map<String, dynamic>;
-      final session = AdminSession.fromJson(data);
+      var session = AdminSession.fromJson(data);
+
+      print('[AuthService.restoreSession] Session parsed: ${session.email}');
+      print('[AuthService.restoreSession] Session valid: ${session.isValid}');
+      print(
+        '[AuthService.restoreSession] Access token length: ${session.accessToken.length}',
+      );
+      print(
+        '[AuthService.restoreSession] Refresh token length: ${session.refreshToken.length}',
+      );
 
       if (!session.isValid) {
+        print('[AuthService.restoreSession] Session invalid, clearing...');
         await logout();
         return null;
       }
 
+      // If email is missing, try to fetch profile and update cached session
+      if (session.email == null || session.email!.isEmpty) {
+        try {
+          print(
+            '[AuthService.restoreSession] Email missing. Fetching /admin/me ...',
+          );
+          final meResponse = await _apiClient.dio.get<Map<String, dynamic>>(
+            '/admin/me',
+          );
+          final userEmail = meResponse.data?['email'] as String?;
+          final activeRoleStr =
+              (meResponse.data?['active_role'] ?? meResponse.data?['role'])
+                  as String?;
+          final rolesList = (meResponse.data?['roles'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList();
+
+          if (userEmail != null || activeRoleStr != null || rolesList != null) {
+            session = session.copyWith(
+              email: userEmail ?? session.email,
+              roles: rolesList != null
+                  ? rolesList.map((r) => AdminRole.fromString(r)).toList()
+                  : session.roles,
+              activeRole: activeRoleStr != null
+                  ? AdminRole.fromString(activeRoleStr)
+                  : session.activeRole,
+            );
+            await _saveSession(session);
+            print(
+              '[AuthService.restoreSession] Updated session from /admin/me (email/roles/active_role).',
+            );
+          }
+        } catch (e) {
+          print('[AuthService.restoreSession] Failed to fetch /admin/me: $e');
+        }
+
+        // Final fallback: if still missing, use last saved email from storage
+        if (session.email == null || session.email!.isEmpty) {
+          final last = await _read(_AuthKeys.lastEmail);
+          if (last != null && last.isNotEmpty) {
+            print('[AuthService.restoreSession] Using last saved email: $last');
+            session = session.copyWith(email: last);
+            await _saveSession(session);
+          }
+        }
+      }
+
+      print('[AuthService.restoreSession] ✅ Session restored successfully');
       return session;
-    } catch (e) {
+    } catch (e, stack) {
       // If we can't restore, clear corrupted data
+      print('[AuthService.restoreSession] ❌ Error restoring session: $e');
+      print('[AuthService.restoreSession] Stack trace: $stack');
       await logout();
       return null;
     }
@@ -128,7 +240,7 @@ class AuthService {
 
   /// Get last used email for login convenience
   Future<String?> getLastEmail() async {
-    return _storage.read(key: _AuthKeys.lastEmail);
+    return _read(_AuthKeys.lastEmail);
   }
 
   /// Switch active role (for multi-role admins)
@@ -204,7 +316,7 @@ class AuthService {
 
   /// Logout and clear all session data
   Future<void> logout() async {
-    await _storage.delete(key: _AuthKeys.session);
+    await _delete(_AuthKeys.session);
     await _tokenStorage.clear();
     // Keep last email for convenience
   }
@@ -212,7 +324,7 @@ class AuthService {
   /// Save session to secure storage
   Future<void> _saveSession(AdminSession session) async {
     final sessionJson = jsonEncode(session.toJson());
-    await _storage.write(key: _AuthKeys.session, value: sessionJson);
+    await _write(_AuthKeys.session, sessionJson);
 
     // Also save tokens to TokenStorage so ApiClient can use them
     await _tokenStorage.save(
@@ -239,6 +351,60 @@ class AuthService {
       return false;
     }
   }
+
+  // --- Storage helpers (web uses SharedPreferences) ---
+  Future<void> _write(String key, String value) async {
+    print(
+      '[AuthService._write] Writing key: $key, value length: ${value.length}, platform: ${kIsWeb ? "WEB" : "MOBILE"}',
+    );
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      final result = await prefs.setString(key, value);
+      print('[AuthService._write] Web storage write result: $result');
+
+      // Verify write
+      final verify = prefs.getString(key);
+      print(
+        '[AuthService._write] Verification read length: ${verify?.length ?? 0}',
+      );
+      return;
+    }
+    await _storage.write(key: key, value: value);
+    print('[AuthService._write] Secure storage write complete');
+  }
+
+  Future<String?> _read(String key) async {
+    print(
+      '[AuthService._read] Reading key: $key, platform: ${kIsWeb ? "WEB" : "MOBILE"}',
+    );
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      final value = prefs.getString(key);
+      print(
+        '[AuthService._read] Web storage read length: ${value?.length ?? 0}',
+      );
+      return value;
+    }
+    final value = await _storage.read(key: key);
+    print(
+      '[AuthService._read] Secure storage read length: ${value?.length ?? 0}',
+    );
+    return value;
+  }
+
+  Future<void> _delete(String key) async {
+    print(
+      '[AuthService._delete] Deleting key: $key, platform: ${kIsWeb ? "WEB" : "MOBILE"}',
+    );
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(key);
+      print('[AuthService._delete] Web storage delete complete');
+      return;
+    }
+    await _storage.delete(key: key);
+    print('[AuthService._delete] Secure storage delete complete');
+  }
 }
 
 /// Provider for AuthService
@@ -264,11 +430,20 @@ class AdminSessionNotifier extends StateNotifier<AdminSession?> {
   /// Initialize session on app start
   Future<void> initialize() async {
     try {
+      print('[AdminSession] Initializing session...');
       final session = await _authService.restoreSession();
+      if (session != null) {
+        print(
+          '[AdminSession] Session restored: ${session.email}, role: ${session.activeRole.displayName}',
+        );
+      } else {
+        print('[AdminSession] No session found');
+      }
       state = session;
     } catch (e) {
       // Silently fail on session restoration errors
       // User will just need to login again
+      print('[AdminSession] Failed to restore session: $e');
       state = null;
     }
   }
@@ -279,16 +454,21 @@ class AdminSessionNotifier extends StateNotifier<AdminSession?> {
     required String password,
     String otp = '000000',
   }) async {
+    print('[AdminSession] Attempting login for: $email');
     final session = await _authService.login(
       email: email,
       password: password,
       otp: otp,
+    );
+    print(
+      '[AdminSession] Login successful: ${session.email}, roles: ${session.roles.map((r) => r.displayName).join(", ")}',
     );
     state = session;
   }
 
   /// Logout
   Future<void> logout() async {
+    print('[AdminSession] Logging out...');
     await _authService.logout();
     state = null;
   }

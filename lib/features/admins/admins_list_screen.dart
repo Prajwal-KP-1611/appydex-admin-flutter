@@ -109,11 +109,29 @@ class _AdminsListScreenState extends ConsumerState<AdminsListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final session = ref.watch(adminSessionProvider);
     final currentRole = ref.watch(currentAdminRoleProvider);
     final adminUsers = ref.watch(adminUsersProvider);
 
+    // Debug logging
+    print(
+      '[AdminsListScreen] Session: ${session?.email}, Role: ${currentRole?.displayName}, Roles: ${session?.roles.map((r) => r.displayName).join(", ")}',
+    );
+    final hasSuperAdminRole =
+        session?.roles.contains(AdminRole.superAdmin) == true;
+    print(
+      '[AdminsListScreen] hasSuperAdminRole (any role): $hasSuperAdminRole',
+    );
+    print(
+      '[AdminsListScreen] Is Super Admin (active role): ${currentRole == AdminRole.superAdmin}',
+    );
+
     // Only super_admin can access this screen
-    if (currentRole != AdminRole.superAdmin) {
+    final isSuper = hasSuperAdminRole || currentRole == AdminRole.superAdmin;
+    if (!isSuper) {
+      print(
+        '[AdminsListScreen] Access DENIED for role: ${currentRole?.displayName}',
+      );
       return AdminScaffold(
         currentRoute: AppRoute.admins,
         title: 'Access Denied',
@@ -143,6 +161,10 @@ class _AdminsListScreenState extends ConsumerState<AdminsListScreen> {
         ),
       );
     }
+
+    print(
+      '[AdminsListScreen] Access GRANTED (super admin privileges detected)',
+    );
 
     return AdminScaffold(
       currentRoute: AppRoute.admins,
