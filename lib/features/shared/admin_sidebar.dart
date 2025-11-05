@@ -312,19 +312,36 @@ class AdminScaffold extends ConsumerWidget {
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: () async {
-                if (context.mounted) {
+                try {
+                  debugPrint('[Logout] Button clicked');
+                  
+                  if (!context.mounted) {
+                    debugPrint('[Logout] Context not mounted, aborting');
+                    return;
+                  }
+
                   // Get navigator before logout changes state
                   final navigator = Navigator.of(context);
+                  debugPrint('[Logout] Navigator obtained');
 
                   // Perform logout
+                  debugPrint('[Logout] Calling logout...');
                   await ref.read(adminSessionProvider.notifier).logout();
+                  debugPrint('[Logout] Logout complete');
+
+                  // Small delay to ensure state updates
+                  await Future.delayed(const Duration(milliseconds: 50));
 
                   // Clear entire navigation stack and go to login
-                  // Use pushNamedAndRemoveUntil to ensure clean slate
+                  debugPrint('[Logout] Navigating to login...');
                   navigator.pushNamedAndRemoveUntil(
                     '/login',
                     (route) => false,
                   );
+                  debugPrint('[Logout] Navigation initiated');
+                } catch (e, stack) {
+                  debugPrint('[Logout] Error during logout: $e');
+                  debugPrint('[Logout] Stack trace: $stack');
                 }
               },
               icon: const Icon(Icons.logout, size: 18),
