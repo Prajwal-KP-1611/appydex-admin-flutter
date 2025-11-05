@@ -328,9 +328,13 @@ class _ReferralsTabState extends ConsumerState<_ReferralsTab> {
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHigh,
                               border: Border(
-                                bottom: BorderSide(color: Colors.grey.shade300),
+                                bottom: BorderSide(
+                                  color: Theme.of(context).dividerColor,
+                                ),
                               ),
                             ),
                             child: const Row(
@@ -537,9 +541,13 @@ class _ReferralCodesTabState extends ConsumerState<_ReferralCodesTab> {
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHigh,
                               border: Border(
-                                bottom: BorderSide(color: Colors.grey.shade300),
+                                bottom: BorderSide(
+                                  color: Theme.of(context).dividerColor,
+                                ),
                               ),
                             ),
                             child: const Row(
@@ -693,7 +701,9 @@ class _ReferralRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+        border: Border(
+          bottom: BorderSide(color: Theme.of(context).dividerColor),
+        ),
       ),
       child: Row(
         children: [
@@ -751,7 +761,9 @@ class _ReferralCodeRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+        border: Border(
+          bottom: BorderSide(color: Theme.of(context).dividerColor),
+        ),
       ),
       child: Row(
         children: [
@@ -814,7 +826,7 @@ class _ReferralCodeRow extends StatelessWidget {
               ),
               backgroundColor: code.isActive
                   ? Colors.green.shade100
-                  : Colors.grey.shade200,
+                  : Theme.of(context).colorScheme.surfaceContainerHighest,
               labelPadding: const EdgeInsets.symmetric(horizontal: 8),
               padding: EdgeInsets.zero,
             ),

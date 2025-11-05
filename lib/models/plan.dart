@@ -6,13 +6,13 @@ class Plan {
     required this.code,
     required this.name,
     required this.priceCents,
-    required this.billingPeriodDays,
+    required this.durationDays,
     required this.isActive,
     this.description,
-    this.trialPeriodDays,
-    this.features,
-    this.subscriberCount,
+    this.trialDays,
+    this.promoDays,
     this.createdAt,
+    this.updatedAt,
   });
 
   final int id;
@@ -20,12 +20,12 @@ class Plan {
   final String name;
   final String? description;
   final int priceCents;
-  final int billingPeriodDays;
-  final int? trialPeriodDays;
-  final Map<String, dynamic>? features;
+  final int durationDays;
+  final int? trialDays;
+  final int? promoDays;
   final bool isActive;
-  final int? subscriberCount;
   final DateTime? createdAt;
+  final DateTime? updatedAt;
 
   factory Plan.fromJson(Map<String, dynamic> json) {
     return Plan(
@@ -34,13 +34,15 @@ class Plan {
       name: json['name'] as String? ?? '',
       description: json['description'] as String?,
       priceCents: json['price_cents'] as int? ?? 0,
-      billingPeriodDays: json['billing_period_days'] as int? ?? 30,
-      trialPeriodDays: json['trial_period_days'] as int?,
-      features: json['features'] as Map<String, dynamic>?,
+      durationDays: json['duration_days'] as int? ?? 30,
+      trialDays: json['trial_days'] as int? ?? 0,
+      promoDays: json['promo_days'] as int? ?? 0,
       isActive: json['is_active'] as bool? ?? true,
-      subscriberCount: json['subscriber_count'] as int?,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'] as String)
+          : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.tryParse(json['updated_at'] as String)
           : null,
     );
   }
@@ -52,22 +54,27 @@ class Plan {
       'name': name,
       if (description != null) 'description': description,
       'price_cents': priceCents,
-      'billing_period_days': billingPeriodDays,
-      if (trialPeriodDays != null) 'trial_period_days': trialPeriodDays,
-      if (features != null) 'features': features,
+      'duration_days': durationDays,
+      if (trialDays != null) 'trial_days': trialDays,
+      if (promoDays != null) 'promo_days': promoDays,
       'is_active': isActive,
-      if (subscriberCount != null) 'subscriber_count': subscriberCount,
       if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
+      if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
     };
   }
 
-  String get priceDisplay => '\$${(priceCents / 100).toStringAsFixed(2)}';
+  String get priceDisplay => '₹${(priceCents / 100).toStringAsFixed(2)}';
 
-  String get billingPeriodDisplay {
-    if (billingPeriodDays == 30) return 'Monthly';
-    if (billingPeriodDays == 365) return 'Yearly';
-    return '$billingPeriodDays days';
+  String get durationDisplay {
+    if (durationDays == 30) return 'Monthly (30 days)';
+    if (durationDays == 365) return 'Yearly (365 days)';
+    if (durationDays % 30 == 0) {
+      return '${durationDays ~/ 30} Months ($durationDays days)';
+    }
+    return '$durationDays days';
   }
+
+  String get statusLabel => isActive ? 'Active' : 'Inactive';
 }
 
 /// Request model for creating/updating plans
@@ -77,18 +84,20 @@ class PlanRequest {
     required this.name,
     required this.priceCents,
     this.description,
-    this.billingPeriodDays = 30,
-    this.trialPeriodDays,
-    this.features,
+    this.durationDays = 30,
+    this.trialDays = 0,
+    this.promoDays = 0,
+    this.isActive = true,
   });
 
   final String code;
   final String name;
   final String? description;
   final int priceCents;
-  final int billingPeriodDays;
-  final int? trialPeriodDays;
-  final Map<String, dynamic>? features;
+  final int durationDays;
+  final int trialDays;
+  final int promoDays;
+  final bool isActive;
 
   Map<String, dynamic> toJson() => {
     'code': code,
@@ -96,8 +105,9 @@ class PlanRequest {
     if (description != null && description!.isNotEmpty)
       'description': description,
     'price_cents': priceCents,
-    'billing_period_days': billingPeriodDays,
-    if (trialPeriodDays != null) 'trial_period_days': trialPeriodDays,
-    if (features != null) 'features': features,
+    'duration_days': durationDays,
+    'trial_days': trialDays,
+    'promo_days': promoDays,
+    'is_active': isActive,
   };
 }

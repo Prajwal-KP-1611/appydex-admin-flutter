@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/theme.dart';
 import '../../core/utils/toast_service.dart';
@@ -11,17 +12,105 @@ import 'plan_form_dialog.dart';
 
 /// Plans management screen
 /// Displays all subscription plans with CRUD operations
-class PlansListScreen extends ConsumerWidget {
+class PlansListScreen extends ConsumerStatefulWidget {
   const PlansListScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PlansListScreen> createState() => _PlansListScreenState();
+}
+
+class _PlansListScreenState extends ConsumerState<PlansListScreen> {
+  bool? _filterActive;
+
+  static const _filterKey = 'admin_plans_filter';
+
+  @override
+  void initState() {
+    super.initState();
+    // Load persisted filter and initial data
+    Future.microtask(() async {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final stored = prefs.getString(_filterKey);
+        setState(() {
+          _filterActive = stored == null
+              ? null
+              : stored == 'true'
+              ? true
+              : false;
+        });
+        await ref.read(plansProvider.notifier).load(isActive: _filterActive);
+      } catch (_) {
+        // Fallback to default load if prefs unavailable
+        await ref.read(plansProvider.notifier).load();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final plansAsync = ref.watch(plansProvider);
 
     return AdminScaffold(
       currentRoute: AppRoute.plans,
       title: 'Subscription Plans',
       actions: [
+        // Filter dropdown
+        PopupMenuButton<bool?>(
+          icon: const Icon(Icons.filter_list),
+          tooltip: 'Filter Plans',
+          onSelected: (value) async {
+            setState(() => _filterActive = value);
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString(
+              _filterKey,
+              value == null ? 'all' : value.toString(),
+            );
+            ref.read(plansProvider.notifier).load(isActive: value);
+          },
+          itemBuilder: (context) => [
+            PopupMenuItem(
+              value: null,
+              child: Row(
+                children: [
+                  if (_filterActive == null)
+                    const Icon(Icons.check, size: 16)
+                  else
+                    const SizedBox(width: 16),
+                  const SizedBox(width: 8),
+                  const Text('All Plans'),
+                ],
+              ),
+            ),
+            PopupMenuItem(
+              value: true,
+              child: Row(
+                children: [
+                  if (_filterActive == true)
+                    const Icon(Icons.check, size: 16)
+                  else
+                    const SizedBox(width: 16),
+                  const SizedBox(width: 8),
+                  const Text('Active Only'),
+                ],
+              ),
+            ),
+            PopupMenuItem(
+              value: false,
+              child: Row(
+                children: [
+                  if (_filterActive == false)
+                    const Icon(Icons.check, size: 16)
+                  else
+                    const SizedBox(width: 16),
+                  const SizedBox(width: 8),
+                  const Text('Inactive/Legacy'),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(width: 8),
         FilledButton.icon(
           onPressed: () => _showPlanDialog(context, ref, null),
           icon: const Icon(Icons.add, size: 20),
@@ -40,7 +129,7 @@ class PlansListScreen extends ConsumerWidget {
               Text('Failed to load plans: $error'),
               const SizedBox(height: 16),
               FilledButton.icon(
-                onPressed: () => ref.refresh(plansProvider),
+                onPressed: () => ref.read(plansProvider.notifier).load(),
                 icon: const Icon(Icons.refresh),
                 label: const Text('Retry'),
               ),
@@ -59,9 +148,13 @@ class PlansListScreen extends ConsumerWidget {
                     color: Colors.grey,
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    'No subscription plans yet',
-                    style: TextStyle(fontSize: 18, color: Colors.grey),
+                  Text(
+                    _filterActive == null
+                        ? 'No subscription plans yet'
+                        : _filterActive!
+                        ? 'No active plans'
+                        : 'No inactive/legacy plans',
+                    style: const TextStyle(fontSize: 18, color: Colors.grey),
                   ),
                   const SizedBox(height: 24),
                   FilledButton.icon(
@@ -97,14 +190,9 @@ class PlansListScreen extends ConsumerWidget {
                     ),
                     const SizedBox(width: 16),
                     _StatCard(
-                      title: 'Total Subscribers',
-                      value: plans
-                          .fold<int>(
-                            0,
-                            (sum, p) => sum + (p.subscriberCount ?? 0),
-                          )
-                          .toString(),
-                      icon: Icons.people,
+                      title: 'Inactive Plans',
+                      value: plans.where((p) => !p.isActive).length.toString(),
+                      icon: Icons.archive,
                       color: Colors.orange,
                     ),
                   ],
@@ -119,9 +207,13 @@ class PlansListScreen extends ConsumerWidget {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHigh,
                           border: Border(
-                            bottom: BorderSide(color: Colors.grey.shade300),
+                            bottom: BorderSide(
+                              color: Theme.of(context).dividerColor,
+                            ),
                           ),
                         ),
                         child: const Row(
@@ -147,13 +239,13 @@ class PlansListScreen extends ConsumerWidget {
                             ),
                             Expanded(
                               child: Text(
-                                'Billing Period',
+                                'Duration',
                                 style: TextStyle(fontWeight: FontWeight.bold),
                               ),
                             ),
                             Expanded(
                               child: Text(
-                                'Subscribers',
+                                'Trial',
                                 style: TextStyle(fontWeight: FontWeight.bold),
                               ),
                             ),
@@ -183,6 +275,10 @@ class PlansListScreen extends ConsumerWidget {
                           onEdit: () => _showPlanDialog(context, ref, plan),
                           onDeactivate: () =>
                               _deactivatePlan(context, ref, plan),
+                          onReactivate: () =>
+                              _reactivatePlan(context, ref, plan),
+                          onHardDelete: () =>
+                              _hardDeletePlan(context, ref, plan),
                         ),
                       ),
                     ],
@@ -242,6 +338,105 @@ class PlansListScreen extends ConsumerWidget {
       } catch (error) {
         if (context.mounted) {
           ToastService.showError(context, 'Failed to deactivate plan: $error');
+        }
+      }
+    }
+  }
+
+  Future<void> _hardDeletePlan(
+    BuildContext context,
+    WidgetRef ref,
+    Plan plan,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Permanently Delete Plan'),
+        content: Text(
+          'This will permanently delete "${plan.name}".\n\n'
+          'Preconditions:\n'
+          '• Plan must be inactive.\n'
+          '• Plan must not be referenced by subscriptions or payments.\n\n'
+          'This action cannot be undone. Continue?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: AppTheme.dangerRed),
+            child: const Text('Delete Permanently'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      try {
+        await ref.read(plansProvider.notifier).hardDelete(plan.id);
+        if (context.mounted) {
+          ToastService.showSuccess(context, 'Plan permanently deleted');
+        }
+      } catch (e) {
+        final message = e.toString();
+        if (message.contains('PLAN_ACTIVE_CANNOT_HARD_DELETE')) {
+          ToastService.showError(
+            context,
+            'Deactivate the plan first before hard delete.',
+          );
+        } else if (message.contains('PLAN_IN_USE_CANNOT_HARD_DELETE')) {
+          ToastService.showError(
+            context,
+            'Plan is referenced by subscriptions or payments.',
+          );
+        } else {
+          ToastService.showError(context, 'Failed to hard delete plan');
+        }
+      }
+    }
+  }
+
+  Future<void> _reactivatePlan(
+    BuildContext context,
+    WidgetRef ref,
+    Plan plan,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reactivate Plan'),
+        content: Text(
+          'Are you sure you want to reactivate "${plan.name}"?\n\n'
+          'This will make the plan available for new subscriptions.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.green),
+            child: const Text('Reactivate'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      try {
+        await ref.read(plansProvider.notifier).reactivate(plan.id);
+        if (context.mounted) {
+          ToastService.showSuccess(
+            context,
+            'Plan "${plan.name}" reactivated successfully',
+          );
+        }
+      } catch (error) {
+        if (context.mounted) {
+          ToastService.showError(context, 'Failed to reactivate plan: $error');
         }
       }
     }
@@ -308,18 +503,24 @@ class _PlanRow extends StatelessWidget {
     required this.plan,
     required this.onEdit,
     required this.onDeactivate,
+    required this.onReactivate,
+    required this.onHardDelete,
   });
 
   final Plan plan;
   final VoidCallback onEdit;
   final VoidCallback onDeactivate;
+  final VoidCallback onReactivate;
+  final VoidCallback onHardDelete;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+        border: Border(
+          bottom: BorderSide(color: Theme.of(context).dividerColor),
+        ),
       ),
       child: Row(
         children: [
@@ -356,10 +557,10 @@ class _PlanRow extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.w500),
             ),
           ),
-          Expanded(child: Text(plan.billingPeriodDisplay)),
+          Expanded(child: Text(plan.durationDisplay)),
           Expanded(
             child: Text(
-              plan.subscriberCount?.toString() ?? '0',
+              '${plan.trialDays ?? 0} days',
               style: const TextStyle(fontWeight: FontWeight.w500),
             ),
           ),
@@ -372,7 +573,7 @@ class _PlanRow extends StatelessWidget {
               ),
               backgroundColor: plan.isActive
                   ? Colors.green.shade100
-                  : Colors.grey.shade200,
+                  : Theme.of(context).colorScheme.surfaceContainerHighest,
               labelPadding: const EdgeInsets.symmetric(horizontal: 8),
               padding: EdgeInsets.zero,
             ),
@@ -395,11 +596,34 @@ class _PlanRow extends StatelessWidget {
                   IconButton(
                     onPressed: onDeactivate,
                     icon: Icon(
-                      Icons.block,
+                      Icons.visibility_off,
                       size: 20,
                       color: AppTheme.dangerRed,
                     ),
-                    tooltip: 'Deactivate Plan',
+                    tooltip: 'Delete (Deactivate) Plan',
+                  )
+                else
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: onReactivate,
+                        icon: Icon(
+                          Icons.restore,
+                          size: 20,
+                          color: Colors.green,
+                        ),
+                        tooltip: 'Reactivate Plan',
+                      ),
+                      IconButton(
+                        onPressed: onHardDelete,
+                        icon: Icon(
+                          Icons.delete_forever,
+                          size: 20,
+                          color: AppTheme.dangerRed,
+                        ),
+                        tooltip: 'Hard Delete (Permanent)',
+                      ),
+                    ],
                   ),
               ],
             ),

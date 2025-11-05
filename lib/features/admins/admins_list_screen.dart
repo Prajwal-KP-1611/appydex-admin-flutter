@@ -255,8 +255,15 @@ class _AdminsListScreenState extends ConsumerState<AdminsListScreen> {
                       child: SingleChildScrollView(
                         child: DataTable(
                           headingRowColor: WidgetStateProperty.all(
-                            AppTheme.surfaceVariant,
+                            Theme.of(context).colorScheme.surfaceContainerHigh,
                           ),
+                          headingTextStyle: Theme.of(context)
+                              .textTheme
+                              .titleSmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
                           columns: const [
                             DataColumn(label: Text('Email')),
                             DataColumn(label: Text('Name')),

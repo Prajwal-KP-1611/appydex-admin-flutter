@@ -444,8 +444,13 @@ class _ServicesListScreenState extends ConsumerState<ServicesListScreen> {
                     child: SingleChildScrollView(
                       child: DataTable(
                         headingRowColor: WidgetStateProperty.all(
-                          AppTheme.surfaceVariant,
+                          Theme.of(context).colorScheme.surfaceContainerHigh,
                         ),
+                        headingTextStyle: Theme.of(context).textTheme.titleSmall
+                            ?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
                         columns: const [
                           DataColumn(
                             label: Text(
@@ -482,17 +487,23 @@ class _ServicesListScreenState extends ConsumerState<ServicesListScreen> {
                                     vertical: 6,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: Colors.blue.shade50,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary.withOpacity(0.10),
                                     borderRadius: BorderRadius.circular(16),
                                     border: Border.all(
-                                      color: Colors.blue.shade200,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary.withOpacity(0.25),
                                     ),
                                   ),
                                   child: Text(
                                     type.name,
                                     style: TextStyle(
                                       fontWeight: FontWeight.w600,
-                                      color: Colors.blue.shade900,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
                                     ),
                                   ),
                                 ),

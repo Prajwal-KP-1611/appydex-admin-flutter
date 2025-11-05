@@ -172,10 +172,12 @@ class _PromoLedgerScreenState extends ConsumerState<PromoLedgerScreen> {
                             Container(
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: Colors.grey.shade100,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.surfaceContainerHigh,
                                 border: Border(
                                   bottom: BorderSide(
-                                    color: Colors.grey.shade300,
+                                    color: Theme.of(context).dividerColor,
                                   ),
                                 ),
                               ),
@@ -505,7 +507,9 @@ class _LedgerRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+        border: Border(
+          bottom: BorderSide(color: Theme.of(context).dividerColor),
+        ),
       ),
       child: Row(
         children: [
@@ -602,7 +606,7 @@ class _LedgerRow extends StatelessWidget {
       case 'admin_compensation':
         return Colors.orange.shade100;
       default:
-        return Colors.grey.shade100;
+        return const Color(0xFFF3F4F6); // Light mode grey
     }
   }
 

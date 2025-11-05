@@ -96,6 +96,7 @@ class DataTableSimple extends StatelessWidget {
                               column.label,
                               style: theme.textTheme.titleSmall?.copyWith(
                                 fontWeight: FontWeight.w600,
+                                color: theme.colorScheme.onSurface,
                               ),
                               textAlign: column.numeric
                                   ? TextAlign.end

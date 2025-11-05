@@ -1,9 +1,11 @@
+import '../../core/auth/otp_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/theme.dart';
+import '../../core/navigation/last_route.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -13,6 +15,56 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
+  bool _otpRequested = false;
+  Future<void> _requestOtp() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final otpRepo = ref.read(otpRepositoryProvider);
+      final result = await otpRepo.requestOtp(
+        emailOrPhone: _emailController.text.trim(),
+      );
+      setState(() {
+        _otpRequested = true;
+      });
+
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result.message),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } on OtpException catch (e) {
+      setState(() {
+        _errorMessage = e.message;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.message),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Failed to request OTP. Please try again.';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -53,13 +105,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _handleLogin() async {
-    if (_isLoading) return; // prevent duplicate submissions
+    // Synchronously check and set loading flag to prevent race conditions
+    if (_isLoading) {
+      debugPrint('[LoginScreen] Duplicate submission blocked');
+      return;
+    }
+
+    _isLoading = true; // Set synchronously before setState
+
     if (!_formKey.currentState!.validate()) {
+      _isLoading = false;
       return;
     }
 
     setState(() {
-      _isLoading = true;
       _errorMessage = null;
     });
 
@@ -72,8 +131,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             otp: _otpController.text.trim(),
           );
 
+      // Persist last route and navigate by clearing the stack to avoid
+      // returning to the login screen via back or stale hash.
       if (mounted) {
-        Navigator.of(context).pushReplacementNamed('/dashboard');
+        // ignore: unawaited_futures
+        LastRoute.write('/dashboard');
+        Navigator.of(
+          context,
+        ).pushNamedAndRemoveUntil('/dashboard', (route) => false);
       }
     } catch (e) {
       String message = 'Login failed. Please check your credentials.';
@@ -140,10 +205,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         });
       }
     } finally {
+      _isLoading = false; // Reset synchronously
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() {});
       }
     }
   }
@@ -183,7 +247,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Logo and Title
                         Icon(
                           Icons.admin_panel_settings,
                           size: 64,
@@ -193,7 +256,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         Text(
                           'AppyDex Admin',
                           style: textTheme.displaySmall?.copyWith(
-                            color: AppTheme.primaryDeepBlue,
+                            // Improve contrast in both light and dark themes
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontWeight: FontWeight.bold,
                           ),
                           textAlign: TextAlign.center,
@@ -202,13 +266,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         Text(
                           'Platform Control Center',
                           style: textTheme.bodyMedium?.copyWith(
-                            color: AppTheme.textDarkSlate.withOpacity(0.6),
+                            // Use onSurface with opacity to adapt to theme brightness
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withOpacity(0.7),
                           ),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 32),
 
-                        // Error Message
                         if (_errorMessage != null &&
                             _errorMessage!.trim().isNotEmpty) ...[
                           Container(
@@ -246,111 +312,126 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           const SizedBox(height: 20),
                         ],
 
-                        // Email Field
-                        TextFormField(
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          decoration: const InputDecoration(
-                            labelText: 'Email',
-                            prefixIcon: Icon(Icons.email_outlined),
-                            hintText: 'root@appydex.com',
-                          ),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Email is required';
-                            }
-                            if (!value.contains('@')) {
-                              return 'Enter a valid email';
-                            }
-                            return null;
-                          },
-                          onFieldSubmitted: (_) => _handleLogin(),
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Password Field
-                        TextFormField(
-                          controller: _passwordController,
-                          obscureText: _obscurePassword,
-                          decoration: InputDecoration(
-                            labelText: 'Password',
-                            prefixIcon: const Icon(Icons.lock_outline),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscurePassword
-                                    ? Icons.visibility
-                                    : Icons.visibility_off,
-                                size: 22,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurface.withOpacity(0.75),
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _obscurePassword = !_obscurePassword;
-                                });
-                              },
-                              tooltip: _obscurePassword
-                                  ? 'Show password'
-                                  : 'Hide password',
+                        // Step 1: Email/Phone input and Request OTP
+                        if (!_otpRequested) ...[
+                          TextFormField(
+                            controller: _emailController,
+                            keyboardType: TextInputType.emailAddress,
+                            decoration: const InputDecoration(
+                              labelText: 'Email or Phone',
+                              prefixIcon: Icon(Icons.email_outlined),
+                              hintText: 'root@appydex.com or +1234567890',
                             ),
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Email or phone is required';
+                              }
+                              // Simple check for email or phone
+                              if (!value.contains('@') && value.length < 8) {
+                                return 'Enter a valid email or phone';
+                              }
+                              return null;
+                            },
                           ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Password is required';
-                            }
-                            if (value.length < 6) {
-                              return 'Password must be at least 6 characters';
-                            }
-                            return null;
-                          },
-                          onFieldSubmitted: (_) => _handleLogin(),
-                        ),
-                        const SizedBox(height: 16),
+                          const SizedBox(height: 24),
+                          ElevatedButton(
+                            onPressed: _isLoading ? null : _requestOtp,
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                            ),
+                            child: _isLoading
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Text('Request OTP'),
+                          ),
+                        ],
 
-                        // OTP Field
-                        TextFormField(
-                          controller: _otpController,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'OTP (One-Time Password)',
-                            prefixIcon: Icon(Icons.pin_outlined),
-                            hintText: '000000',
-                            helperText: 'Use 000000 for development',
+                        // Step 2: OTP and Password input, Login
+                        if (_otpRequested) ...[
+                          TextFormField(
+                            controller: _otpController,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: 'OTP (One-Time Password)',
+                              prefixIcon: Icon(Icons.pin_outlined),
+                              hintText: '000000',
+                              helperText:
+                                  'Enter the OTP sent to your email or phone',
+                            ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'OTP is required';
+                              }
+                              if (value.length != 6) {
+                                return 'OTP must be 6 digits';
+                              }
+                              return null;
+                            },
                           ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'OTP is required';
-                            }
-                            if (value.length != 6) {
-                              return 'OTP must be 6 digits';
-                            }
-                            return null;
-                          },
-                          onFieldSubmitted: (_) => _handleLogin(),
-                        ),
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: _passwordController,
+                            obscureText: _obscurePassword,
+                            decoration: InputDecoration(
+                              labelText: 'Password',
+                              prefixIcon: const Icon(Icons.lock_outline),
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscurePassword
+                                      ? Icons.visibility
+                                      : Icons.visibility_off,
+                                  size: 22,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface.withOpacity(0.75),
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _obscurePassword = !_obscurePassword;
+                                  });
+                                },
+                                tooltip: _obscurePassword
+                                    ? 'Show password'
+                                    : 'Hide password',
+                              ),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Password is required';
+                              }
+                              if (value.length < 6) {
+                                return 'Password must be at least 6 characters';
+                              }
+                              return null;
+                            },
+                            onFieldSubmitted: (_) => _handleLogin(),
+                          ),
+                          const SizedBox(height: 24),
+                          ElevatedButton(
+                            onPressed: _isLoading ? null : _handleLogin,
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                            ),
+                            child: _isLoading
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Text('Login'),
+                          ),
+                        ],
+
                         const SizedBox(height: 24),
-
-                        // Login Button
-                        ElevatedButton(
-                          onPressed: _isLoading ? null : _handleLogin,
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                          ),
-                          child: _isLoading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Text('Sign In'),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Default credentials hint
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
@@ -384,18 +465,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               Text(
                                 'Email: admin@appydex.local',
                                 style: textTheme.bodySmall?.copyWith(
-                                  color: AppTheme.textDarkSlate.withOpacity(
-                                    0.7,
-                                  ),
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface.withOpacity(0.85),
                                   fontFamily: 'monospace',
                                 ),
                               ),
                               Text(
                                 'Password: admin123!@#',
                                 style: textTheme.bodySmall?.copyWith(
-                                  color: AppTheme.textDarkSlate.withOpacity(
-                                    0.7,
-                                  ),
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface.withOpacity(0.85),
                                   fontFamily: 'monospace',
                                 ),
                               ),

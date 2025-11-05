@@ -10,6 +10,38 @@ import '../../models/admin_role.dart';
 import '../api_client.dart';
 import 'token_storage.dart';
 
+/// Check if a JWT token is expired
+bool _isTokenExpired(String token) {
+  try {
+    final parts = token.split('.');
+    if (parts.length != 3) return true;
+
+    final payload = parts[1];
+    final normalized = base64Url.normalize(payload);
+    final decoded = utf8.decode(base64Url.decode(normalized));
+    final json = jsonDecode(decoded) as Map<String, dynamic>;
+
+    final exp = json['exp'] as int?;
+    if (exp == null) return false; // No expiry means valid
+
+    final expiryDate = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
+    final isExpired = DateTime.now().isAfter(expiryDate);
+
+    if (kDebugMode) {
+      print('[JWT] Token expiry: $expiryDate');
+      print('[JWT] Current time: ${DateTime.now()}');
+      print('[JWT] Is expired: $isExpired');
+    }
+
+    return isExpired;
+  } catch (e) {
+    if (kDebugMode) {
+      print('[JWT] Error checking expiration: $e');
+    }
+    return true; // Assume expired if we can't parse
+  }
+}
+
 /// Secure storage keys for admin authentication
 class _AuthKeys {
   static const String session = 'admin_session';
@@ -178,6 +210,33 @@ class AuthService {
         print('[AuthService.restoreSession] Session invalid, clearing...');
         await logout();
         return null;
+      }
+
+      // Check if access token is expired and attempt silent refresh
+      if (_isTokenExpired(session.accessToken)) {
+        print('[AuthService.restoreSession] ⚠️ Access token is EXPIRED');
+        print('[AuthService.restoreSession] Attempting silent refresh...');
+        try {
+          final attempt = await _apiClient.refreshWithDetails(
+            source: 'restore_session',
+          );
+          if (attempt.tokens != null) {
+            print('[AuthService.restoreSession] ✅ Silent refresh succeeded');
+            session = session.copyWith(
+              accessToken: attempt.tokens!.accessToken,
+              refreshToken: attempt.tokens!.refreshToken,
+            );
+            await _saveSession(session);
+          } else {
+            print('[AuthService.restoreSession] ❌ Silent refresh failed');
+            await logout();
+            return null;
+          }
+        } catch (e) {
+          print('[AuthService.restoreSession] ❌ Error during refresh: $e');
+          await logout();
+          return null;
+        }
       }
 
       // If email is missing, try to fetch profile and update cached session

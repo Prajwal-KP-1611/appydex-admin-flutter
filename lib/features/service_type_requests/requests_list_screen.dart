@@ -142,10 +142,12 @@ class _ServiceTypeRequestsListScreenState
                             Container(
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: Colors.grey.shade100,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.surfaceContainerHigh,
                                 border: Border(
                                   bottom: BorderSide(
-                                    color: Colors.grey.shade300,
+                                    color: Theme.of(context).dividerColor,
                                   ),
                                 ),
                               ),
@@ -504,7 +506,9 @@ class _RequestRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+        border: Border(
+          bottom: BorderSide(color: Theme.of(context).dividerColor),
+        ),
         color: isOverdue ? Colors.red.shade50 : null,
       ),
       child: Row(

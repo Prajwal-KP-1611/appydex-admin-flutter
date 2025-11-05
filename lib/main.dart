@@ -1,3 +1,6 @@
+import 'features/payments/payments_list_screen.dart';
+import 'features/campaigns/referrals_screen.dart';
+import 'features/reviews/reviews_list_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,12 +15,15 @@ import 'features/auth/change_password_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/dashboard/dashboard_screen.dart';
 import 'features/diagnostics/diagnostics_screen.dart';
+import 'features/plans/plans_list_screen.dart';
 import 'features/service_type_requests/requests_list_screen.dart';
 import 'features/services/services_list_screen.dart';
 import 'features/subscriptions/subscriptions_admin_screen.dart';
 import 'features/vendors/vendor_detail_screen.dart';
 import 'features/vendors/vendors_list_screen.dart';
 import 'routes.dart';
+import 'core/navigation/app_route_observer.dart';
+import 'core/navigation/last_route.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -49,13 +55,24 @@ class AppydexAdminApp extends ConsumerStatefulWidget {
 }
 
 class _AppydexAdminAppState extends ConsumerState<AppydexAdminApp> {
+  bool _sessionInitialized = false;
+
   @override
   void initState() {
     super.initState();
-    // Initialize auth session on app start
-    Future.microtask(() {
-      ref.read(adminSessionProvider.notifier).initialize();
-    });
+    // Check if we already have a session (hot reload case)
+    final currentSession = ref.read(adminSessionProvider);
+    if (currentSession != null) {
+      _sessionInitialized = true;
+    } else {
+      // Only initialize if we don't have a session
+      Future.microtask(() async {
+        await ref.read(adminSessionProvider.notifier).initialize();
+        if (mounted) {
+          setState(() => _sessionInitialized = true);
+        }
+      });
+    }
   }
 
   @override
@@ -64,13 +81,41 @@ class _AppydexAdminAppState extends ConsumerState<AppydexAdminApp> {
     final baseUrl = ref.watch(apiBaseUrlProvider);
     final isAuthenticated = ref.watch(isAuthenticatedProvider);
 
+    // Show loading screen while session is being restored
+    if (!_sessionInitialized && config.flavor != 'test') {
+      return MaterialApp(
+        title: 'AppyDex Admin',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme,
+        home: const Scaffold(body: Center(child: CircularProgressIndicator())),
+      );
+    }
+
+    // Determine initial screen based on auth state
+    String initialRoute;
+    if (config.flavor == 'test') {
+      initialRoute = '/diagnostics';
+    } else if (isAuthenticated) {
+      // Try to restore the current URL from browser hash, else dashboard
+      // If the hash is "/login" but we're already authenticated, force dashboard.
+      final urlHash = LastRoute.resolveInitialRoute();
+      if (urlHash == '/login') {
+        initialRoute = AppRoute.dashboard.path;
+      } else {
+        initialRoute = urlHash ?? AppRoute.dashboard.path;
+      }
+    } else {
+      initialRoute = '/login';
+    }
+
     return MaterialApp(
+      key: ValueKey('app_$_sessionInitialized'),
       title: 'AppyDex Admin',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      initialRoute: config.flavor == 'test'
-          ? '/diagnostics'
-          : (isAuthenticated ? AppRoute.dashboard.path : '/login'),
+      darkTheme: AppTheme.darkTheme,
+      initialRoute: initialRoute,
+      navigatorObservers: [appRouteObserver],
       onGenerateRoute: (settings) {
         // Check authentication for protected routes
         final protectedRoutes = <String>[
@@ -107,6 +152,13 @@ class _AppydexAdminAppState extends ConsumerState<AppydexAdminApp> {
 
         switch (settings.name) {
           case '/login':
+            // If already authenticated, redirect away from login to dashboard
+            if (isAuthenticated) {
+              return MaterialPageRoute(
+                settings: settings,
+                builder: (_) => const DashboardScreen(),
+              );
+            }
             return MaterialPageRoute(
               settings: settings,
               builder: (_) => const LoginScreen(),
@@ -163,6 +215,38 @@ class _AppydexAdminAppState extends ConsumerState<AppydexAdminApp> {
             return MaterialPageRoute(
               settings: settings,
               builder: (_) => const ServiceTypeRequestsListScreen(),
+            );
+          case '/plans':
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const PlansListScreen(),
+            );
+          case '/users':
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const VendorsListScreen(), // placeholder
+            );
+          case '/payments':
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const PaymentsListScreen(),
+            );
+          case '/campaigns':
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) =>
+                  const ReferralsScreen(), // placeholder campaigns hub
+            );
+          case '/reviews':
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const ReviewsListScreen(),
+            );
+          case '/reports':
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) =>
+                  DiagnosticsScreen(initialBaseUrl: baseUrl), // placeholder
             );
           default:
             return MaterialPageRoute(

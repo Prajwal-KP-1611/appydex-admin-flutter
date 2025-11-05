@@ -23,11 +23,12 @@ class _PlanFormDialogState extends ConsumerState<PlanFormDialog> {
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _priceController = TextEditingController();
-  final _billingPeriodController = TextEditingController(text: '30');
-  final _trialPeriodController = TextEditingController();
+  final _durationController = TextEditingController(text: '30');
+  final _trialDaysController = TextEditingController(text: '0');
+  final _promoDaysController = TextEditingController(text: '0');
 
   bool _isLoading = false;
-  String _billingPeriodType = 'monthly';
+  String _durationType = 'monthly';
 
   @override
   void initState() {
@@ -40,17 +41,17 @@ class _PlanFormDialogState extends ConsumerState<PlanFormDialog> {
       _priceController.text = (widget.plan!.priceCents / 100).toStringAsFixed(
         2,
       );
-      _billingPeriodController.text = widget.plan!.billingPeriodDays.toString();
-      _trialPeriodController.text =
-          widget.plan!.trialPeriodDays?.toString() ?? '';
+      _durationController.text = widget.plan!.durationDays.toString();
+      _trialDaysController.text = widget.plan!.trialDays?.toString() ?? '0';
+      _promoDaysController.text = widget.plan!.promoDays?.toString() ?? '0';
 
-      // Set billing period type based on days
-      if (widget.plan!.billingPeriodDays == 30) {
-        _billingPeriodType = 'monthly';
-      } else if (widget.plan!.billingPeriodDays == 365) {
-        _billingPeriodType = 'yearly';
+      // Set duration type based on days
+      if (widget.plan!.durationDays == 30) {
+        _durationType = 'monthly';
+      } else if (widget.plan!.durationDays == 365) {
+        _durationType = 'yearly';
       } else {
-        _billingPeriodType = 'custom';
+        _durationType = 'custom';
       }
     }
   }
@@ -61,8 +62,9 @@ class _PlanFormDialogState extends ConsumerState<PlanFormDialog> {
     _nameController.dispose();
     _descriptionController.dispose();
     _priceController.dispose();
-    _billingPeriodController.dispose();
-    _trialPeriodController.dispose();
+    _durationController.dispose();
+    _trialDaysController.dispose();
+    _promoDaysController.dispose();
     super.dispose();
   }
 
@@ -177,11 +179,11 @@ class _PlanFormDialogState extends ConsumerState<PlanFormDialog> {
                         title: const Text('Monthly'),
                         subtitle: const Text('30 days'),
                         value: 'monthly',
-                        groupValue: _billingPeriodType,
+                        groupValue: _durationType,
                         onChanged: (value) {
                           setState(() {
-                            _billingPeriodType = value!;
-                            _billingPeriodController.text = '30';
+                            _durationType = value!;
+                            _durationController.text = '30';
                           });
                         },
                         contentPadding: EdgeInsets.zero,
@@ -192,11 +194,11 @@ class _PlanFormDialogState extends ConsumerState<PlanFormDialog> {
                         title: const Text('Yearly'),
                         subtitle: const Text('365 days'),
                         value: 'yearly',
-                        groupValue: _billingPeriodType,
+                        groupValue: _durationType,
                         onChanged: (value) {
                           setState(() {
-                            _billingPeriodType = value!;
-                            _billingPeriodController.text = '365';
+                            _durationType = value!;
+                            _durationController.text = '365';
                           });
                         },
                         contentPadding: EdgeInsets.zero,
@@ -206,11 +208,11 @@ class _PlanFormDialogState extends ConsumerState<PlanFormDialog> {
                       child: RadioListTile<String>(
                         title: const Text('Custom'),
                         value: 'custom',
-                        groupValue: _billingPeriodType,
+                        groupValue: _durationType,
                         onChanged: (value) {
                           setState(() {
-                            _billingPeriodType = value!;
-                            _billingPeriodController.clear();
+                            _durationType = value!;
+                            _durationController.clear();
                           });
                         },
                         contentPadding: EdgeInsets.zero,
@@ -218,12 +220,12 @@ class _PlanFormDialogState extends ConsumerState<PlanFormDialog> {
                     ),
                   ],
                 ),
-                if (_billingPeriodType == 'custom') ...[
+                if (_durationType == 'custom') ...[
                   const SizedBox(height: 8),
                   TextFormField(
-                    controller: _billingPeriodController,
+                    controller: _durationController,
                     decoration: const InputDecoration(
-                      labelText: 'Custom Billing Period (days) *',
+                      labelText: 'Custom Duration (days) *',
                       hintText: 'e.g., 90',
                       border: OutlineInputBorder(),
                     ),
@@ -231,7 +233,7 @@ class _PlanFormDialogState extends ConsumerState<PlanFormDialog> {
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return 'Billing period is required';
+                        return 'Duration is required';
                       }
                       final days = int.tryParse(value.trim());
                       if (days == null || days <= 0) {
@@ -243,12 +245,33 @@ class _PlanFormDialogState extends ConsumerState<PlanFormDialog> {
                 ],
                 const SizedBox(height: 16),
 
-                // Trial Period
+                // Trial Days
                 TextFormField(
-                  controller: _trialPeriodController,
+                  controller: _trialDaysController,
                   decoration: const InputDecoration(
-                    labelText: 'Trial Period (days)',
-                    hintText: 'e.g., 14 (leave empty for no trial)',
+                    labelText: 'Trial Days',
+                    hintText: 'e.g., 14 (default: 0)',
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) return null;
+                    final days = int.tryParse(value.trim());
+                    if (days == null || days < 0) {
+                      return 'Enter a valid number of days';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                // Promo Days
+                TextFormField(
+                  controller: _promoDaysController,
+                  decoration: const InputDecoration(
+                    labelText: 'Promo Days (Bonus)',
+                    hintText: 'e.g., 7 (default: 0)',
                     border: OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.number,
@@ -299,10 +322,13 @@ class _PlanFormDialogState extends ConsumerState<PlanFormDialog> {
 
     try {
       final price = double.parse(_priceController.text.trim());
-      final billingPeriodDays = int.parse(_billingPeriodController.text.trim());
-      final trialPeriodDays = _trialPeriodController.text.trim().isEmpty
-          ? null
-          : int.parse(_trialPeriodController.text.trim());
+      final durationDays = int.parse(_durationController.text.trim());
+      final trialDays = _trialDaysController.text.trim().isEmpty
+          ? 0
+          : int.parse(_trialDaysController.text.trim());
+      final promoDays = _promoDaysController.text.trim().isEmpty
+          ? 0
+          : int.parse(_promoDaysController.text.trim());
 
       final request = PlanRequest(
         code: _codeController.text.trim(),
@@ -311,8 +337,9 @@ class _PlanFormDialogState extends ConsumerState<PlanFormDialog> {
             ? null
             : _descriptionController.text.trim(),
         priceCents: (price * 100).round(),
-        billingPeriodDays: billingPeriodDays,
-        trialPeriodDays: trialPeriodDays,
+        durationDays: durationDays,
+        trialDays: trialDays,
+        promoDays: promoDays,
       );
 
       if (widget.plan != null) {

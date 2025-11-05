@@ -3,8 +3,74 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/auth/auth_service.dart';
 import '../../routes.dart';
+import '../../core/navigation/last_route.dart';
 
 class AdminScaffold extends ConsumerWidget {
+  List<Widget> _buildSectionedNav(BuildContext context, AppRoute currentRoute) {
+    final widgets = <Widget>[];
+    // Dashboard
+    widgets.add(_buildNavItem(context, _allNavItems.first, currentRoute));
+    widgets.add(const SizedBox(height: 8));
+
+    Widget section(String name) => _buildSectionHeader(context, name);
+
+    // Management
+    widgets.add(section('MANAGEMENT'));
+    for (final item in _allNavItems.where((i) => i.section == 'management')) {
+      widgets.add(_buildNavItem(context, item, currentRoute));
+    }
+    widgets.add(const SizedBox(height: 8));
+
+    // Commerce
+    widgets.add(section('COMMERCE'));
+    for (final item in _allNavItems.where((i) => i.section == 'commerce')) {
+      widgets.add(_buildNavItem(context, item, currentRoute));
+    }
+    widgets.add(const SizedBox(height: 8));
+
+    // Engagement
+    widgets.add(section('ENGAGEMENT'));
+    for (final item in _allNavItems.where((i) => i.section == 'engagement')) {
+      widgets.add(_buildNavItem(context, item, currentRoute));
+    }
+    widgets.add(const SizedBox(height: 8));
+
+    // System
+    widgets.add(section('SYSTEM'));
+    for (final item in _allNavItems.where((i) => i.section == 'system')) {
+      widgets.add(_buildNavItem(context, item, currentRoute));
+    }
+
+    return widgets;
+  }
+
+  List<Widget> _buildDrawerItems(BuildContext context, AppRoute currentRoute) {
+    final items = <Widget>[];
+    for (var i = 0; i < _allNavItems.length; i++) {
+      final item = _allNavItems[i];
+      if (i == 0) {
+        // Dashboard (no header)
+      } else {
+        final prev = _allNavItems[i - 1];
+        if (item.section != prev.section && item.section != null) {
+          items.add(_buildSectionHeader(context, item.section!.toUpperCase()));
+        }
+      }
+      items.add(
+        ListTile(
+          selected: item.route == currentRoute,
+          leading: Icon(item.icon),
+          title: Text(item.label),
+          onTap: () {
+            Navigator.pop(context);
+            _navigate(context, item);
+          },
+        ),
+      );
+    }
+    return items;
+  }
+
   const AdminScaffold({
     super.key,
     required this.currentRoute,
@@ -20,7 +86,7 @@ class AdminScaffold extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final navItems = _navigationItems;
+    // Use canonical nav item list for both sidebar and drawer
     return LayoutBuilder(
       builder: (context, constraints) {
         final useRail = constraints.maxWidth >= 1000;
@@ -84,7 +150,7 @@ class AdminScaffold extends ConsumerWidget {
                                           color: Theme.of(context)
                                               .colorScheme
                                               .onSurface
-                                              .withOpacity(0.6),
+                                              .withValues(alpha: 0.6),
                                         ),
                                   ),
                                 ],
@@ -98,125 +164,7 @@ class AdminScaffold extends ConsumerWidget {
                       Expanded(
                         child: ListView(
                           padding: const EdgeInsets.symmetric(vertical: 8),
-                          children: [
-                            // Dashboard (no section)
-                            _buildNavItem(
-                              context,
-                              _navigationItems[0],
-                              currentRoute,
-                            ),
-                            const SizedBox(height: 8),
-
-                            // MANAGEMENT Section
-                            _buildSectionHeader(context, 'MANAGEMENT'),
-                            _buildNavItem(
-                              context,
-                              _navigationItems[1], // Admin Users
-                              currentRoute,
-                            ),
-                            _buildNavItem(
-                              context,
-                              _navigationItems[2], // Vendors
-                              currentRoute,
-                            ),
-                            _buildNavItem(
-                              context,
-                              _AdminNavItem(
-                                AppRoute.dashboard, // Placeholder - users route
-                                'Users',
-                                Icons.people_outline,
-                                section: 'management',
-                              ),
-                              currentRoute,
-                            ),
-                            _buildNavItem(
-                              context,
-                              _navigationItems[3], // Service Catalog
-                              currentRoute,
-                            ),
-                            _buildNavItem(
-                              context,
-                              _navigationItems[4], // Service Type Requests ← ADD THIS
-                              currentRoute,
-                            ),
-                            const SizedBox(height: 8),
-
-                            // COMMERCE Section
-                            _buildSectionHeader(context, 'COMMERCE'),
-                            _buildNavItem(
-                              context,
-                              _AdminNavItem(
-                                AppRoute.dashboard, // Placeholder
-                                'Subscription Plans',
-                                Icons.card_membership_outlined,
-                                section: 'commerce',
-                              ),
-                              currentRoute,
-                            ),
-                            _buildNavItem(
-                              context,
-                              _navigationItems[5], // Subscriptions
-                              currentRoute,
-                            ),
-                            _buildNavItem(
-                              context,
-                              _AdminNavItem(
-                                AppRoute.dashboard, // Placeholder
-                                'Payments',
-                                Icons.payment_outlined,
-                                section: 'commerce',
-                              ),
-                              currentRoute,
-                            ),
-                            const SizedBox(height: 8),
-
-                            // ENGAGEMENT Section
-                            _buildSectionHeader(context, 'ENGAGEMENT'),
-                            _buildNavItem(
-                              context,
-                              _AdminNavItem(
-                                AppRoute.dashboard, // Placeholder
-                                'Campaigns',
-                                Icons.campaign_outlined,
-                                section: 'engagement',
-                              ),
-                              currentRoute,
-                            ),
-                            _buildNavItem(
-                              context,
-                              _AdminNavItem(
-                                AppRoute.dashboard, // Placeholder
-                                'Reviews',
-                                Icons.rate_review_outlined,
-                                section: 'engagement',
-                              ),
-                              currentRoute,
-                            ),
-                            const SizedBox(height: 8),
-
-                            // SYSTEM Section
-                            _buildSectionHeader(context, 'SYSTEM'),
-                            _buildNavItem(
-                              context,
-                              _navigationItems[6], // Audit Logs
-                              currentRoute,
-                            ),
-                            _buildNavItem(
-                              context,
-                              _AdminNavItem(
-                                AppRoute.dashboard, // Placeholder
-                                'Reports',
-                                Icons.assessment_outlined,
-                                section: 'system',
-                              ),
-                              currentRoute,
-                            ),
-                            _buildNavItem(
-                              context,
-                              _navigationItems[7], // Diagnostics
-                              currentRoute,
-                            ),
-                          ],
+                          children: _buildSectionedNav(context, currentRoute),
                         ),
                       ),
                       // Logout button at bottom
@@ -242,16 +190,7 @@ class AdminScaffold extends ConsumerWidget {
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
                   ),
                 ),
-                for (final item in navItems)
-                  ListTile(
-                    selected: item.route == currentRoute,
-                    leading: Icon(item.icon),
-                    title: Text(item.label),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _navigate(context, item);
-                    },
-                  ),
+                ..._buildDrawerItems(context, currentRoute),
               ],
             ),
           ),
@@ -267,7 +206,7 @@ class AdminScaffold extends ConsumerWidget {
       child: Text(
         title,
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
           fontWeight: FontWeight.w600,
           letterSpacing: 0.5,
         ),
@@ -293,7 +232,7 @@ class AdminScaffold extends ConsumerWidget {
           size: 20,
           color: isSelected
               ? Theme.of(context).colorScheme.primary
-              : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+              : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
         ),
         title: Text(
           item.label,
@@ -313,24 +252,22 @@ class AdminScaffold extends ConsumerWidget {
   }
 
   String _labelFor(AppRoute route) {
-    return _navigationItems
+    return _allNavItems
         .firstWhere(
           (item) => item.route == route,
-          orElse: () => _navigationItems.first,
+          orElse: () => _allNavItems.first,
         )
         .label;
   }
 
   void _navigate(BuildContext context, _AdminNavItem item) {
     final currentRouteName = ModalRoute.of(context)?.settings.name;
-    print('[Navigation] From: $currentRouteName → To: ${item.route.path}');
-
     if (currentRouteName == item.route.path) {
-      print('[Navigation] Already on ${item.route.path}, skipping navigation');
       return;
     }
-
-    print('[Navigation] Navigating to ${item.label} (${item.route.path})');
+    // Persist last route to enable restore-after-reload
+    // ignore: unawaited_futures
+    LastRoute.write(item.route.path);
     Navigator.of(context).pushReplacementNamed(item.route.path);
   }
 
@@ -363,7 +300,7 @@ class AdminScaffold extends ConsumerWidget {
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: Theme.of(
                         context,
-                      ).colorScheme.onSurface.withOpacity(0.6),
+                      ).colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                 ],
@@ -405,7 +342,7 @@ class _AdminNavItem {
   final String? section;
 }
 
-const _navigationItems = [
+const _allNavItems = [
   _AdminNavItem(AppRoute.dashboard, 'Dashboard', Icons.dashboard_outlined),
   _AdminNavItem(
     AppRoute.admins,
@@ -417,6 +354,12 @@ const _navigationItems = [
     AppRoute.vendors,
     'Vendors',
     Icons.storefront_outlined,
+    section: 'management',
+  ),
+  _AdminNavItem(
+    AppRoute.users,
+    'Users',
+    Icons.people_outline,
     section: 'management',
   ),
   _AdminNavItem(
@@ -432,15 +375,45 @@ const _navigationItems = [
     section: 'management',
   ),
   _AdminNavItem(
+    AppRoute.plans,
+    'Subscription Plans',
+    Icons.card_membership_outlined,
+    section: 'commerce',
+  ),
+  _AdminNavItem(
     AppRoute.subscriptions,
     'Subscriptions',
     Icons.credit_card_outlined,
     section: 'commerce',
   ),
   _AdminNavItem(
+    AppRoute.payments,
+    'Payments',
+    Icons.payment_outlined,
+    section: 'commerce',
+  ),
+  _AdminNavItem(
+    AppRoute.campaigns,
+    'Campaigns',
+    Icons.campaign_outlined,
+    section: 'engagement',
+  ),
+  _AdminNavItem(
+    AppRoute.reviews,
+    'Reviews',
+    Icons.rate_review_outlined,
+    section: 'engagement',
+  ),
+  _AdminNavItem(
     AppRoute.audit,
     'Audit Logs',
     Icons.history_outlined,
+    section: 'system',
+  ),
+  _AdminNavItem(
+    AppRoute.reports,
+    'Reports',
+    Icons.assessment_outlined,
     section: 'system',
   ),
   _AdminNavItem(

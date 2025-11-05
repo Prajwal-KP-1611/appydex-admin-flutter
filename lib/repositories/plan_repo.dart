@@ -15,10 +15,16 @@ class PlanRepository {
 
   /// List plans
   /// GET /api/v1/admin/plans
-  Future<List<Plan>> list() async {
+  Future<List<Plan>> list({bool? isActive}) async {
     try {
+      final queryParams = <String, dynamic>{};
+      if (isActive != null) {
+        queryParams['is_active'] = isActive;
+      }
+
       final response = await _client.requestAdmin<Map<String, dynamic>>(
         '/admin/plans',
+        queryParameters: queryParams,
       );
       final body = response.data ?? <String, dynamic>{};
       final items = body['items'] as List<dynamic>? ?? [];
@@ -103,6 +109,38 @@ class PlanRepository {
       rethrow;
     }
   }
+
+  /// Reactivate plan
+  /// POST /api/v1/admin/plans/{plan_id}/reactivate
+  Future<Plan> reactivate(int id) async {
+    try {
+      final response = await _client.requestAdmin<Map<String, dynamic>>(
+        '/admin/plans/$id/reactivate',
+        method: 'POST',
+        options: idempotentOptions(),
+      );
+      return Plan.fromJson(response.data ?? const {});
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw AdminEndpointMissing('admin/plans/:id/reactivate');
+      }
+      rethrow;
+    }
+  }
+
+  /// Hard delete plan (permanent)
+  /// DELETE /api/v1/admin/plans/{plan_id}/hard-delete
+  Future<void> hardDelete(int id) async {
+    try {
+      await _client.requestAdmin<void>(
+        '/admin/plans/$id/hard-delete',
+        method: 'DELETE',
+        options: idempotentOptions(),
+      );
+    } on DioException {
+      rethrow;
+    }
+  }
 }
 
 /// Provider for PlanRepository
@@ -118,11 +156,13 @@ class PlansNotifier extends StateNotifier<AsyncValue<List<Plan>>> {
   }
 
   final PlanRepository _repository;
+  bool? _isActiveFilter;
 
-  Future<void> load() async {
+  Future<void> load({bool? isActive}) async {
+    _isActiveFilter = isActive;
     state = const AsyncValue.loading();
     try {
-      final result = await _repository.list();
+      final result = await _repository.list(isActive: isActive);
       state = AsyncValue.data(result);
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
@@ -131,17 +171,27 @@ class PlansNotifier extends StateNotifier<AsyncValue<List<Plan>>> {
 
   Future<void> create(PlanRequest request) async {
     await _repository.create(request);
-    await load();
+    await load(isActive: _isActiveFilter);
   }
 
   Future<void> update(int id, PlanRequest request) async {
     await _repository.update(id, request);
-    await load();
+    await load(isActive: _isActiveFilter);
   }
 
   Future<void> deactivate(int id) async {
     await _repository.deactivate(id);
-    await load();
+    await load(isActive: _isActiveFilter);
+  }
+
+  Future<void> reactivate(int id) async {
+    await _repository.reactivate(id);
+    await load(isActive: _isActiveFilter);
+  }
+
+  Future<void> hardDelete(int id) async {
+    await _repository.hardDelete(id);
+    await load(isActive: _isActiveFilter);
   }
 }
 
