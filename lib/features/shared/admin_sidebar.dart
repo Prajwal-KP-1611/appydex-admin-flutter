@@ -312,16 +312,19 @@ class AdminScaffold extends ConsumerWidget {
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: () async {
-                // Use Navigator first to avoid widget rebuild interference
                 if (context.mounted) {
                   // Get navigator before logout changes state
                   final navigator = Navigator.of(context);
-                  
+
                   // Perform logout
                   await ref.read(adminSessionProvider.notifier).logout();
-                  
-                  // Navigate after logout completes
-                  navigator.pushReplacementNamed('/login');
+
+                  // Clear entire navigation stack and go to login
+                  // Use pushNamedAndRemoveUntil to ensure clean slate
+                  navigator.pushNamedAndRemoveUntil(
+                    '/login',
+                    (route) => false,
+                  );
                 }
               },
               icon: const Icon(Icons.logout, size: 18),

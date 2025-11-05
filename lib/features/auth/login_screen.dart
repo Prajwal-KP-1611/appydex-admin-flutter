@@ -140,16 +140,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           );
 
       // Mark login as successful to prevent UI from resetting
-      _loginSuccessful = true;
+      if (mounted) {
+        setState(() {
+          _loginSuccessful = true;
+        });
+      }
 
       // Persist last route and navigate by clearing the stack to avoid
       // returning to the login screen via back or stale hash.
       if (mounted) {
         // ignore: unawaited_futures
         LastRoute.write('/dashboard');
-        Navigator.of(
-          context,
-        ).pushNamedAndRemoveUntil('/dashboard', (route) => false);
+        // Use a slight delay to ensure state update completes
+        await Future.delayed(const Duration(milliseconds: 100));
+        if (mounted) {
+          Navigator.of(
+            context,
+          ).pushNamedAndRemoveUntil('/dashboard', (route) => false);
+        }
       }
     } catch (e) {
       String message = 'Login failed. Please check your credentials.';
@@ -213,12 +221,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (mounted) {
         setState(() {
           _errorMessage = message;
+          _loginSuccessful = false; // Reset on error
         });
       }
     } finally {
       _isLoading = false; // Reset synchronously
       if (mounted) {
-        setState(() {});
+        setState(() {
+          // Ensure login successful is false if we had an error
+          if (_errorMessage != null) {
+            _loginSuccessful = false;
+          }
+        });
       }
     }
   }
