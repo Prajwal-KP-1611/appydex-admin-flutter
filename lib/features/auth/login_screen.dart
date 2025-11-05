@@ -16,7 +16,12 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _otpRequested = false;
+  
   Future<void> _requestOtp() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+    
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -26,6 +31,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final result = await otpRepo.requestOtp(
         emailOrPhone: _emailController.text.trim(),
       );
+      
+      // Persist OTP requested state
       setState(() {
         _otpRequested = true;
       });
@@ -36,7 +43,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           SnackBar(
             content: Text(result.message),
             backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
+            duration: const Duration(seconds: 4),
           ),
         );
       }
@@ -354,6 +361,48 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                         // Step 2: OTP and Password input, Login
                         if (_otpRequested) ...[
+                          // Show email that OTP was sent to
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primaryContainer
+                                  .withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: theme.colorScheme.primary
+                                    .withOpacity(0.3),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.info_outline,
+                                  color: theme.colorScheme.primary,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'OTP sent to: ${_emailController.text.trim()}',
+                                    style: textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurface,
+                                    ),
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      _otpRequested = false;
+                                      _otpController.clear();
+                                      _errorMessage = null;
+                                    });
+                                  },
+                                  child: const Text('Change'),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
                           TextFormField(
                             controller: _otpController,
                             keyboardType: TextInputType.number,

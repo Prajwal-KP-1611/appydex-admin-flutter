@@ -71,14 +71,18 @@ class OtpRequestResult {
     final otpEmail = otpSent?['otp_email'] as String?;
     final otpPhone = otpSent?['otp_phone'] as String?;
 
-    // Build user-friendly message
+    // Build user-friendly message (don't expose OTP in production)
     String displayMessage = message ?? 'OTP sent successfully';
+    
+    // For development/testing: Log OTP to console instead of showing in UI
     if (otpEmail != null) {
-      displayMessage +=
-          '\n\n✅ Email OTP: $otpEmail\n\nFor testing, use this OTP code.';
+      // ignore: avoid_print
+      print('🔐 [DEV] Email OTP: $otpEmail');
+      displayMessage += '\n\n✅ Email OTP sent!\n\nFor testing, check console output.';
     } else if (otpPhone != null) {
-      displayMessage +=
-          '\n\n✅ Phone OTP: $otpPhone\n\nFor testing, use this OTP code.';
+      // ignore: avoid_print
+      print('🔐 [DEV] Phone OTP: $otpPhone');
+      displayMessage += '\n\n✅ Phone OTP sent!\n\nFor testing, check console output.';
     } else {
       displayMessage += '\n\nPlease check your email/phone for the OTP code.';
     }
