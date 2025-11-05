@@ -312,9 +312,16 @@ class AdminScaffold extends ConsumerWidget {
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: () async {
-                await ref.read(adminSessionProvider.notifier).logout();
+                // Use Navigator first to avoid widget rebuild interference
                 if (context.mounted) {
-                  Navigator.of(context).pushReplacementNamed('/login');
+                  // Get navigator before logout changes state
+                  final navigator = Navigator.of(context);
+                  
+                  // Perform logout
+                  await ref.read(adminSessionProvider.notifier).logout();
+                  
+                  // Navigate after logout completes
+                  navigator.pushReplacementNamed('/login');
                 }
               },
               icon: const Icon(Icons.logout, size: 18),

@@ -108,9 +108,11 @@ class AuthService {
       AdminSession finalSession = session;
       if (session.email == null || session.email!.isEmpty) {
         try {
-          print(
-            '[AuthService.login] Email missing, fetching from /admin/me...',
-          );
+          if (kDebugMode) {
+            print(
+              '[AuthService.login] Email missing, fetching from /admin/me...',
+            );
+          }
           final meResponse = await _apiClient.dio.get<Map<String, dynamic>>(
             '/admin/me',
             options: Options(
@@ -120,15 +122,22 @@ class AuthService {
 
           if (meResponse.data != null) {
             final userEmail = meResponse.data!['email'] as String?;
-            print(
-              '[AuthService.login] Fetched email from /admin/me: $userEmail',
-            );
+            if (kDebugMode) {
+              print(
+                '[AuthService.login] Fetched email from /admin/me: $userEmail',
+              );
+            }
             if (userEmail != null) {
               finalSession = session.copyWith(email: userEmail);
             }
           }
         } catch (e) {
-          print('[AuthService.login] Failed to fetch email from /admin/me: $e');
+          // Silently fall back - /admin/me endpoint may not be implemented yet
+          if (kDebugMode) {
+            print(
+              '[AuthService.login] /admin/me not available (expected if endpoint not implemented)',
+            );
+          }
           // Continue with session even if email fetch fails
         }
       }
