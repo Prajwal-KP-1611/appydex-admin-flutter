@@ -2,8 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+// Browser adapter for enabling credential (cookie) sending in web builds.
+import 'package:dio/browser.dart' show BrowserHttpClientAdapter;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 // AdminConfig and legacy X-Admin-Token removed — admin endpoints use JWT Bearer now.
@@ -127,6 +130,17 @@ class ApiClient {
            ) {
     // Debug: Print the resolved base URL
     print('🔧 ApiClient initialized with baseUrl: ${_dio.options.baseUrl}');
+
+    // Enable cookie credentials on web (for httpOnly refresh token flow)
+    if (kIsWeb) {
+      final adapter = _dio.httpClientAdapter;
+      if (adapter is BrowserHttpClientAdapter) {
+        adapter.withCredentials = true;
+        if (kDebugMode) {
+          debugPrint('[ApiClient] Web withCredentials enabled');
+        }
+      }
+    }
     
     _dio.interceptors.add(
       QueuedInterceptorsWrapper(
@@ -432,7 +446,7 @@ class ApiClient {
 
   bool _shouldAttemptRefresh(DioException error) {
     final statusCode = error.response?.statusCode;
-    if (statusCode != 401) return false;
+  if (statusCode != 401) return false;
     final options = error.requestOptions;
     if (options.extra['skipAuth'] == true) return false;
     if (options.extra['isRefreshRequest'] == true) return false;
@@ -459,31 +473,51 @@ class ApiClient {
 
     try {
       final refreshToken = await _tokenStorage.readRefreshToken();
-      if (refreshToken == null || refreshToken.isEmpty) {
-        final attempt = RefreshAttempt(
-          source: source,
-          tokens: null,
-          response: null,
-          error: const TokenRefreshException('Missing refresh token'),
-          timestamp: DateTime.now(),
-          traceId: null,
-        );
-        _ref.read(lastRefreshAttemptProvider.notifier).state = attempt;
-        return attempt;
-      }
+      Response<Map<String, dynamic>>? response;
 
-      final response = await _dio.post<Map<String, dynamic>>(
-        '/auth/refresh',
-        data: {'refresh_token': refreshToken},
-        options: Options(
-          extra: const {
-            'skipAuth': true,
-            'isRefreshRequest': true,
-            'skipErrorWrapping': true,
-          },
-          validateStatus: (_) => true,
-        ),
-      );
+      if (refreshToken == null || refreshToken.isEmpty) {
+        // Cookie-based fallback (web): attempt refresh without body
+        if (kIsWeb) {
+          if (kDebugMode) {
+            debugPrint('[ApiClient] No refresh token stored – attempting cookie refresh');
+          }
+          response = await _dio.post<Map<String, dynamic>>(
+            '/auth/refresh',
+            options: Options(
+              extra: const {
+                'skipAuth': true,
+                'isRefreshRequest': true,
+                'skipErrorWrapping': true,
+              },
+              validateStatus: (_) => true,
+            ),
+          );
+        } else {
+          final attempt = RefreshAttempt(
+            source: source,
+            tokens: null,
+            response: null,
+            error: const TokenRefreshException('Missing refresh token'),
+            timestamp: DateTime.now(),
+            traceId: null,
+          );
+          _ref.read(lastRefreshAttemptProvider.notifier).state = attempt;
+          return attempt;
+        }
+      } else {
+        response = await _dio.post<Map<String, dynamic>>(
+          '/auth/refresh',
+          data: {'refresh_token': refreshToken},
+          options: Options(
+            extra: const {
+              'skipAuth': true,
+              'isRefreshRequest': true,
+              'skipErrorWrapping': true,
+            },
+            validateStatus: (_) => true,
+          ),
+        );
+      }
 
       TokenPair? tokens;
       Object? error;
@@ -653,6 +687,30 @@ class ApiClient {
       traceId: traceId,
       timestamp: DateTime.now(),
     );
+
+    // Sentry breadcrumbs for failed requests (non-sensitive metadata)
+    try {
+      // Only log error & warning responses
+      final status = response?.statusCode ?? 0;
+      if (status >= 400) {
+        Sentry.addBreadcrumb(
+          Breadcrumb(
+            category: 'http',
+            type: 'http',
+            data: {
+              'method': options.method,
+              'url': options.uri.toString(),
+              'status_code': status,
+              if (traceId != null) 'trace_id': traceId,
+            },
+            level: status >= 500 ? SentryLevel.error : SentryLevel.warning,
+            message: 'HTTP ${options.method} ${options.path} failed',
+          ),
+        );
+      }
+    } catch (_) {
+      // Ignore Sentry issues silently
+    }
   }
 
   String? _stringify(dynamic value) {

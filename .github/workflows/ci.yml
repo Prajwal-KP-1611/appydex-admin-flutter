@@ -1,0 +1,142 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  analyze:
+    name: Analyze & Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.x'
+          channel: 'stable'
+          cache: true
+      
+      - name: Get dependencies
+        run: flutter pub get
+      
+      - name: Verify formatting
+        run: dart format --set-exit-if-changed lib/ test/
+      
+      - name: Analyze project
+        run: flutter analyze --fatal-infos
+
+  test:
+    name: Unit & Widget Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.x'
+          channel: 'stable'
+          cache: true
+      
+      - name: Get dependencies
+        run: flutter pub get
+      
+      - name: Run tests
+        run: flutter test --coverage --reporter expanded
+      
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: success()
+        with:
+          files: ./coverage/lcov.info
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  build-web:
+    name: Build Web
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [analyze, test]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.x'
+          channel: 'stable'
+          cache: true
+      
+      - name: Get dependencies
+        run: flutter pub get
+      
+      - name: Build web (staging)
+        run: |
+          flutter build web \
+            --dart-define=APP_FLAVOR=staging \
+            --dart-define=APP_VERSION=${{ github.sha }} \
+            --dart-define=API_BASE_URL=${{ secrets.STAGING_API_URL }} \
+            --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN }} \
+            --release \
+            --web-renderer canvaskit \
+            --source-maps
+      
+      - name: Upload web build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: build/web/
+          retention-days: 7
+
+  # Run integration tests in headless Chrome
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [analyze]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.x'
+          channel: 'stable'
+          cache: true
+      
+      - name: Get dependencies
+        run: flutter pub get
+      
+      - name: Install Chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+      
+      - name: Run integration tests
+        run: |
+          export CHROME_EXECUTABLE=$(which google-chrome-stable)
+          flutter drive \
+            --driver=test_driver/integration_test.dart \
+            --target=integration_test/auth_flow_test.dart \
+            -d web-server \
+            --dart-define=API_BASE_URL=${{ secrets.STAGING_API_URL }} \
+            --web-browser-flag="--headless" \
+            --web-browser-flag="--disable-gpu" \
+            --web-browser-flag="--no-sandbox"
+        continue-on-error: true
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-test-results
+          path: |
+            build/integration_test_results/
+            screenshots/
+          retention-days: 7

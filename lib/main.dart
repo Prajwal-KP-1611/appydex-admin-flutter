@@ -1,17 +1,14 @@
-import 'features/payments/payments_list_screen.dart';
-import 'features/analytics/analytics_dashboard_screen.dart';
-import 'features/campaigns/referrals_screen.dart';
-import 'features/reviews/reviews_list_screen.dart';
-import 'features/reviews/vendor_flags_queue_screen.dart';
-import 'features/system/system_health_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 import 'core/admin_config.dart';
 import 'core/auth/auth_service.dart';
 import 'core/config.dart';
 import 'core/theme.dart';
+import 'core/navigation/app_route_observer.dart';
+import 'core/navigation/last_route.dart';
 import 'features/admins/admins_list_screen.dart';
 import 'features/audit/audit_logs_screen.dart';
 import 'features/auth/change_password_screen.dart';
@@ -24,46 +21,80 @@ import 'features/services/services_list_screen.dart';
 import 'features/subscriptions/subscriptions_admin_screen.dart';
 import 'features/vendors/vendor_detail_screen.dart';
 import 'features/vendors/vendors_list_screen.dart';
+import 'features/payments/payments_list_screen.dart';
+import 'features/analytics/analytics_dashboard_screen.dart';
+import 'features/campaigns/referrals_screen.dart';
+import 'features/reviews/reviews_list_screen.dart';
+import 'features/reviews/vendor_flags_queue_screen.dart';
+import 'features/system/system_health_screen.dart';
 import 'routes.dart';
-import 'core/navigation/app_route_observer.dart';
-import 'core/navigation/last_route.dart';
 
-const _apiBaseOverride = String.fromEnvironment(
-  'API_BASE_URL',
-  defaultValue: '',
-);
+// Provided via --dart-define at build time. Empty disables Sentry.
+const _sentryDsn = String.fromEnvironment('SENTRY_DSN', defaultValue: '');
+
+// API base override for diagnostics (optional)
+const _apiBaseOverride = String.fromEnvironment('API_BASE_URL', defaultValue: '');
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  
-  // Validate production configuration before proceeding
-  assertProdConfig();
-  
-  final config = await AppConfig.load(flavor: kAppFlavor);
+  await SentryFlutter.init(
+    (options) {
+      options.dsn = _sentryDsn;
+      options.environment = kAppFlavor;
+      options.release = 'appydex-admin@$kAppVersion';
+      // Performance tracing (lower in prod to reduce cost)
+      options.tracesSampleRate = kAppFlavor == 'prod' ? 0.15 : 0.4;
+      options.debug = kAppFlavor != 'prod';
+      options.beforeSend = (event, hint) {
+        // Scrub sensitive headers (request is guaranteed non-null here)
+        if (event.request != null) {
+          event.request!.headers.remove('authorization');
+          event.request!.headers.remove('x-admin-token');
+        }
+        return event;
+      };
+    },
+    appRunner: () async {
+      WidgetsFlutterBinding.ensureInitialized();
+      assertProdConfig();
 
-  if (_apiBaseOverride.isNotEmpty) {
-    await config.setApiBaseUrl(_apiBaseOverride);
-    print('🌐 API Base URL overridden via dart define: ${config.apiBaseUrl}');
-  } else {
-    print('🌐 API Base URL resolved: ${config.apiBaseUrl}');
-  }
-  
-  print('🏗️  Build flavor: $kAppFlavor');
-  print('📦 App version: $kAppVersion');
-  print('🔧 Mock mode: ${config.mockMode}');
+      final config = await AppConfig.load(flavor: kAppFlavor);
+      if (_apiBaseOverride.isNotEmpty) {
+        await config.setApiBaseUrl(_apiBaseOverride);
+        // Debug only (avoid print spam in prod) – flagged by analyzer but acceptable here.
+        // ignore: avoid_print
+        print('🌐 API Base URL overridden via dart define: ${config.apiBaseUrl}');
+      } else {
+        // ignore: avoid_print
+        print('🌐 API Base URL resolved: ${config.apiBaseUrl}');
+      }
+      // ignore: avoid_print
+      print('🏗️  Build flavor: $kAppFlavor');
+      // ignore: avoid_print
+      print('📦 App version: $kAppVersion');
+      // ignore: avoid_print
+      print('🔧 Mock mode: ${config.mockMode}');
+      if (_sentryDsn.isNotEmpty) {
+        // ignore: avoid_print
+        print('�️  Sentry enabled for $kAppFlavor');
+      } else {
+        // ignore: avoid_print
+        print('⚠️  Sentry DSN missing – monitoring disabled');
+      }
 
-  // Load admin token from preferences
-  final prefs = await SharedPreferences.getInstance();
-  final adminToken = prefs.getString('admin_token');
-  if (adminToken != null && adminToken.isNotEmpty) {
-    AdminConfig.adminToken = adminToken;
-  }
+      // Legacy admin token (kept for backward compatibility if present)
+      final prefs = await SharedPreferences.getInstance();
+      final adminToken = prefs.getString('admin_token');
+      if (adminToken != null && adminToken.isNotEmpty) {
+        AdminConfig.adminToken = adminToken;
+      }
 
-  runApp(
-    ProviderScope(
-      overrides: [appConfigProvider.overrideWithValue(config)],
-      child: const AppydexAdminApp(),
-    ),
+      runApp(
+        ProviderScope(
+          overrides: [appConfigProvider.overrideWithValue(config)],
+          child: const AppydexAdminApp(),
+        ),
+      );
+    },
   );
 }
 

@@ -1,0 +1,78 @@
+name: Deploy Production
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build-and-deploy:
+    name: Build & Deploy Production
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.x'
+          channel: 'stable'
+          cache: true
+      
+      - name: Get dependencies
+        run: flutter pub get
+      
+      - name: Run tests
+        run: flutter test
+      
+      - name: Build web (production)
+        run: |
+          flutter build web \
+            --dart-define=APP_FLAVOR=prod \
+            --dart-define=APP_VERSION=${{ steps.version.outputs.VERSION }} \
+            --dart-define=API_BASE_URL=${{ secrets.PROD_API_URL }} \
+            --dart-define=SENTRY_DSN=${{ secrets.PROD_SENTRY_DSN }} \
+            --release \
+            --web-renderer canvaskit \
+            --source-maps
+      
+      - name: Upload to Sentry
+        if: success()
+        run: |
+          curl -sL https://sentry.io/get-cli/ | bash
+          sentry-cli releases new "appydex-admin@${{ steps.version.outputs.VERSION }}"
+          sentry-cli releases files "appydex-admin@${{ steps.version.outputs.VERSION }}" upload-sourcemaps ./build/web
+          sentry-cli releases finalize "appydex-admin@${{ steps.version.outputs.VERSION }}"
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+      
+      # Example: Deploy to Netlify (replace with your hosting provider)
+      - name: Deploy to Netlify
+        uses: nwtgck/actions-netlify@v2
+        with:
+          publish-dir: ./build/web
+          production-deploy: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Production deploy v${{ steps.version.outputs.VERSION }}"
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            build/web/main.dart.js
+            build/web/flutter.js
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
