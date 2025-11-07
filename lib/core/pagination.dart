@@ -39,13 +39,23 @@ class Pagination<T> {
       final meta = json['meta'] as Map<String, dynamic>? ?? {};
       total = meta['total'] as int? ?? itemsList.length;
       page = meta['page'] as int? ?? 1;
-      pageSize = meta['page_size'] as int? ?? itemsList.length;
+      pageSize = _resolvePageSize(meta, fallback: itemsList.length);
+    } else if (json.containsKey('items') && json.containsKey('meta')) {
+      // Contract format: {items: [...], meta: {...}}
+      itemsList = json['items'] as List<dynamic>? ?? const [];
+      final meta = json['meta'] as Map<String, dynamic>? ?? {};
+      total = meta['total'] as int? ?? itemsList.length;
+      page = meta['page'] as int? ?? 1;
+      pageSize = _resolvePageSize(meta, fallback: itemsList.length);
     } else {
-      // Old format: {items: [...], total, page, page_size}
+      // Legacy format: {items: [...], total, page, page_size}
       itemsList = json['items'] as List<dynamic>? ?? const [];
       total = json['total'] as int? ?? itemsList.length;
       page = json['page'] as int? ?? 1;
-      pageSize = json['page_size'] as int? ?? itemsList.length;
+      pageSize =
+          json['page_size'] as int? ??
+          json['limit'] as int? ??
+          itemsList.length;
     }
 
     final items = itemsList
@@ -60,4 +70,8 @@ class Pagination<T> {
       pageSize: pageSize,
     );
   }
+}
+
+int _resolvePageSize(Map<String, dynamic> meta, {required int fallback}) {
+  return meta['page_size'] as int? ?? meta['limit'] as int? ?? fallback;
 }

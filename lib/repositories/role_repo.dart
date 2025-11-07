@@ -22,12 +22,17 @@ class RoleRepository {
     if (data == null) return AdminRole.values;
 
     final adminRoles = data['admin_roles'] as List<dynamic>? ?? [];
+    if (adminRoles.isEmpty) return AdminRole.values;
     return adminRoles
-        .map(
-          (item) => AdminRole.fromString(
-            (item as Map<String, dynamic>)['role'] as String? ?? '',
-          ),
-        )
+        .map((item) {
+          if (item is String) return AdminRole.fromString(item);
+          if (item is Map<String, dynamic>) {
+            final roleValue = item['role'] as String? ?? '';
+            return AdminRole.fromString(roleValue);
+          }
+          return null;
+        })
+        .whereType<AdminRole>()
         .toList();
   }
 
@@ -42,7 +47,7 @@ class RoleRepository {
     final response = await _apiClient.requestAdmin<Map<String, dynamic>>(
       '/admin/roles/assign',
       method: 'POST',
-      data: {'user_id': userId, 'role': role},
+      queryParameters: {'user_id': userId, 'role': role},
       options: idempotentOptions(),
     );
 
@@ -60,7 +65,7 @@ class RoleRepository {
     final response = await _apiClient.requestAdmin<Map<String, dynamic>>(
       '/admin/roles/revoke',
       method: 'DELETE',
-      data: {'user_id': userId, 'role': role},
+      queryParameters: {'user_id': userId, 'role': role},
       options: idempotentOptions(),
     );
 

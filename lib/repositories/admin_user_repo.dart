@@ -76,10 +76,11 @@ class AdminUserRepository {
   /// Request: JSON body (all fields optional): { "email": "...", "name": "...", "password": "..." }
   /// Response: { "id": 10, "email": "...", "name": "...", "updated_fields": [...], "updated": true }
   Future<AdminUser> update(int userId, AdminUserUpdateRequest request) async {
+    final payload = request.toJson();
     final response = await _apiClient.requestAdmin<Map<String, dynamic>>(
       '/admin/accounts/$userId',
       method: 'PUT',
-      data: request.toJson(),
+      queryParameters: payload.isEmpty ? null : payload,
       options: idempotentOptions(),
     );
 

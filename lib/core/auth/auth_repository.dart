@@ -24,7 +24,7 @@ class AuthRepository {
 
   Future<Response<dynamic>> login(Map<String, dynamic> payload) {
     // TODO(AUTH-002): Implement full login payload handling with OTP support.
-    return _apiClient.dio.post('/auth/login', data: payload);
+    return _apiClient.dio.post('/admin/auth/login', data: payload);
   }
 }
 

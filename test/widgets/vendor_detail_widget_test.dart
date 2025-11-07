@@ -10,15 +10,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final _baseVendor = Vendor(
   id: 1,
-  name: 'Acme Corp',
-  ownerEmail: 'owner@acme.test',
-  phone: '+9100000000',
-  planCode: 'pro',
-  isActive: true,
-  isVerified: false,
-  onboardingScore: 0.9,
+  userId: 101,
+  companyName: 'Acme Corp',
+  slug: 'acme-corp',
+  status: 'pending',
   createdAt: DateTime(2024, 1, 1),
-  notes: 'Demo vendor',
+  metadata: const {
+    'contact_email': 'owner@acme.test',
+    'contact_phone': '+9100000000',
+  },
+  documents: const [],
 );
 
 class _FakeVendorRepository implements VendorRepository {
@@ -29,17 +30,17 @@ class _FakeVendorRepository implements VendorRepository {
     pageSize: 20,
   );
 
-  int patchCalls = 0;
+  int statusCalls = 0;
 
   @override
   Future<Vendor> get(int id) async => _page.items.first;
 
   @override
   Future<Pagination<Vendor>> list({
-    int skip = 0,
-    int limit = 100,
+    int page = 1,
+    int pageSize = 20,
     String? status,
-    String? search,
+    String? query,
   }) async {
     return Pagination<Vendor>(
       items: [_baseVendor],
@@ -49,48 +50,38 @@ class _FakeVendorRepository implements VendorRepository {
     );
   }
 
-  @override
-  Future<Vendor> patch(int id, Map<String, dynamic> changes) async {
-    patchCalls++;
-    return _baseVendor.copyWith(
-      isVerified: changes['is_verified'] as bool? ?? _baseVendor.isVerified,
-      isActive: changes['is_active'] as bool? ?? _baseVendor.isActive,
-      notes: changes['notes'] as String? ?? _baseVendor.notes,
-    );
-  }
-
-  @override
-  Future<VendorVerificationResult> verifyOrReject({
+  Future<VendorStatusChangeResult> _emitStatus({
     required int id,
-    required String action,
+    required String status,
     String? notes,
   }) async {
-    return VendorVerificationResult(
+    statusCalls++;
+    return VendorStatusChangeResult(
       vendorId: id,
-      status: action == 'approve' ? 'verified' : 'rejected',
+      status: status,
+      previousStatus: 'pending',
       verifiedAt: DateTime.now(),
       notes: notes,
     );
   }
 
   @override
-  Future<Vendor> verify(int id, {String? notes}) async {
-    patchCalls++;
-    return _page.items.first.copyWith(isVerified: true, notes: notes);
-  }
+  Future<VendorStatusChangeResult> verifyOrReject({
+    required int id,
+    required String status,
+    String? notes,
+  }) => _emitStatus(id: id, status: status, notes: notes);
 
   @override
-  Future<Vendor> reject(int id, {required String reason}) async {
-    patchCalls++;
-    return _page.items.first.copyWith(isVerified: false, notes: reason);
-  }
+  Future<VendorStatusChangeResult> verify(int id, {String? notes}) =>
+      _emitStatus(id: id, status: 'verified', notes: notes);
+
+  @override
+  Future<VendorStatusChangeResult> reject(int id, {required String reason}) =>
+      _emitStatus(id: id, status: 'rejected', notes: reason);
 
   @override
   Future<List<VendorDocument>> getDocuments(int vendorId) async => [];
-
-  @override
-  Future<List<Vendor>> bulkVerify(List<int> vendorIds, {String? notes}) async =>
-      [];
 }
 
 void main() {
@@ -130,6 +121,6 @@ void main() {
     await tester.tap(find.text('Approve'));
     await tester.pumpAndSettle();
 
-    expect(fakeRepo.patchCalls, 1);
+    expect(fakeRepo.statusCalls, 1);
   });
 }

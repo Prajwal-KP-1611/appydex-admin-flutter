@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import 'package:appydex_admin/models/vendor.dart';
 import '../../repositories/vendor_repo.dart';
 
 /// Dialog to view vendor KYC documents
@@ -87,7 +88,7 @@ class VendorDocumentsDialog extends ConsumerWidget {
                             backgroundColor: Theme.of(
                               context,
                             ).colorScheme.primaryContainer,
-                            child: Icon(doc.typeIcon),
+                            child: Icon(_iconForType(doc.docType)),
                           ),
                           title: Text(
                             doc.displayType,
@@ -111,10 +112,12 @@ class VendorDocumentsDialog extends ConsumerWidget {
                               // Status chip
                               Chip(
                                 label: Text(
-                                  doc.status.toUpperCase(),
+                                  doc.verificationStatus.toUpperCase(),
                                   style: const TextStyle(fontSize: 11),
                                 ),
-                                backgroundColor: _getStatusColor(doc.status),
+                                backgroundColor: _getStatusColor(
+                                  doc.verificationStatus,
+                                ),
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 8,
                                 ),
@@ -125,7 +128,7 @@ class VendorDocumentsDialog extends ConsumerWidget {
                                 icon: const Icon(Icons.open_in_new),
                                 tooltip: 'View document',
                                 onPressed: () =>
-                                    _openDocument(context, doc.url),
+                                    _openDocument(context, doc.filePath),
                               ),
                             ],
                           ),
@@ -154,8 +157,23 @@ class VendorDocumentsDialog extends ConsumerWidget {
     }
   }
 
-  void _openDocument(BuildContext context, String url) {
-    if (url.isEmpty) {
+  IconData _iconForType(String type) {
+    switch (type) {
+      case 'business_license':
+        return Icons.business;
+      case 'tax_document':
+        return Icons.receipt;
+      case 'identity_proof':
+        return Icons.badge;
+      case 'address_proof':
+        return Icons.location_on;
+      default:
+        return Icons.description;
+    }
+  }
+
+  void _openDocument(BuildContext context, String filePath) {
+    if (filePath.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Document URL not available')),
       );
@@ -165,16 +183,16 @@ class VendorDocumentsDialog extends ConsumerWidget {
     // Show full-screen document viewer
     showDialog(
       context: context,
-      builder: (context) => DocumentViewerDialog(url: url),
+      builder: (context) => DocumentViewerDialog(filePath: filePath),
     );
   }
 }
 
 /// Full-screen document viewer
 class DocumentViewerDialog extends StatelessWidget {
-  const DocumentViewerDialog({super.key, required this.url});
+  const DocumentViewerDialog({super.key, required this.filePath});
 
-  final String url;
+  final String filePath;
 
   @override
   Widget build(BuildContext context) {
@@ -206,12 +224,12 @@ class DocumentViewerDialog extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'URL: $url',
+                'Path: $filePath',
                 style: const TextStyle(fontSize: 12, color: Colors.grey),
               ),
               const SizedBox(height: 24),
               FilledButton.icon(
-                onPressed: () => _openInBrowser(url),
+                onPressed: () => _openInBrowser(filePath),
                 icon: const Icon(Icons.open_in_browser),
                 label: const Text('Open in Browser'),
               ),
@@ -228,10 +246,10 @@ class DocumentViewerDialog extends StatelessWidget {
     );
   }
 
-  void _openInBrowser(String url) {
+  void _openInBrowser(String path) {
     // In a real app, use url_launcher package
     // For now, this is a placeholder
-    debugPrint('Opening URL: $url');
+    debugPrint('Opening URL: $path');
   }
 
   void _downloadDocument(BuildContext context) {

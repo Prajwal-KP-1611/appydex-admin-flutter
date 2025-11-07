@@ -2,9 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Default production API origin.
-/// ⚠️ PRODUCTION CHANGE POINT: Set to 'https://api.appydex.co' before production release
+/// ⚠️ PRODUCTION CHANGE POINT: Backend is at 'https://api.appydex.co'
 /// For local development, using backend at http://localhost:16110
-const kDefaultApiBaseUrl = 'http://localhost:16110/api/v1';
+const kDefaultApiBaseUrl = 'https://api.appydex.co';
 
 /// Resolve the current build flavor from the `APP_FLAVOR` dart define.
 const kAppFlavor = String.fromEnvironment('APP_FLAVOR', defaultValue: 'prod');

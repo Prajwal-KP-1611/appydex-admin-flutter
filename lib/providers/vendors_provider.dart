@@ -13,44 +13,24 @@ class VendorsFilter {
   const VendorsFilter({
     this.query,
     this.status,
-    this.planCode,
-    this.verified,
-    this.createdAfter,
-    this.createdBefore,
     this.page = 1,
     this.pageSize = 20,
   });
 
   final String? query;
   final String? status;
-  final String? planCode;
-  final bool? verified;
-  final DateTime? createdAfter;
-  final DateTime? createdBefore;
   final int page;
   final int pageSize;
 
   VendorsFilter copyWith({
     Object? query = _sentinel,
     Object? status = _sentinel,
-    Object? planCode = _sentinel,
-    Object? verified = _sentinel,
-    Object? createdAfter = _sentinel,
-    Object? createdBefore = _sentinel,
     int? page,
     int? pageSize,
   }) {
     return VendorsFilter(
       query: query == _sentinel ? this.query : query as String?,
       status: status == _sentinel ? this.status : status as String?,
-      planCode: planCode == _sentinel ? this.planCode : planCode as String?,
-      verified: verified == _sentinel ? this.verified : verified as bool?,
-      createdAfter: createdAfter == _sentinel
-          ? this.createdAfter
-          : createdAfter as DateTime?,
-      createdBefore: createdBefore == _sentinel
-          ? this.createdBefore
-          : createdBefore as DateTime?,
       page: page ?? this.page,
       pageSize: pageSize ?? this.pageSize,
     );
@@ -119,10 +99,10 @@ class VendorsNotifier extends StateNotifier<VendorsState> {
       final result = forceMock || state.usingMock
           ? _mock.vendors(page: filter.page, pageSize: filter.pageSize)
           : await _repo.list(
-              search: filter.query,
+              query: filter.query,
               status: filter.status,
-              skip: (filter.page - 1) * filter.pageSize,
-              limit: filter.pageSize,
+              page: filter.page,
+              pageSize: filter.pageSize,
             );
 
       state = state.copyWith(
@@ -174,33 +154,20 @@ class VendorsNotifier extends StateNotifier<VendorsState> {
   }
 
   Future<void> verifyVendor(int id, {String? notes}) async {
-    await _mutateVendor(id, {
-      'is_verified': true,
-      if (notes != null) 'notes': notes,
-    });
-  }
-
-  Future<void> toggleActive(int id, bool isActive) async {
-    await _mutateVendor(id, {'is_active': isActive});
+    await _executeMutation(() => _repo.verify(id, notes: notes));
   }
 
   Future<void> bulkVerify({String? notes}) async {
     final ids = state.selected.toList();
-    for (final id in ids) {
-      await _mutateVendor(id, {
-        'is_verified': true,
-        if (notes != null) 'notes': notes,
-      });
-    }
-    clearSelection();
+    await _executeMutation(() async {
+      for (final id in ids) {
+        await _repo.verify(id, notes: notes);
+      }
+    }, clearSelection: true);
   }
 
-  Future<void> bulkDeactivate() async {
-    final ids = state.selected.toList();
-    for (final id in ids) {
-      await _mutateVendor(id, {'is_active': false});
-    }
-    clearSelection();
+  Future<void> rejectVendor(int id, {required String reason}) async {
+    await _executeMutation(() => _repo.reject(id, reason: reason));
   }
 
   Future<void> useMockData() async {
@@ -213,52 +180,39 @@ class VendorsNotifier extends StateNotifier<VendorsState> {
         .map(
           (vendor) => {
             'id': vendor.id,
-            'name': vendor.name,
-            'owner_email': vendor.ownerEmail,
-            'phone': vendor.phone ?? '',
-            'plan_code': vendor.planCode ?? '',
-            'is_active': vendor.isActive,
-            'is_verified': vendor.isVerified,
-            'onboarding_score': vendor.onboardingScore,
+            'user_id': vendor.userId,
+            'company_name': vendor.companyName,
+            'slug': vendor.slug,
+            'status': vendor.status,
+            'contact_email': vendor.contactEmail ?? '',
+            'contact_phone': vendor.contactPhone ?? '',
+            'business_type': vendor.businessType ?? '',
             'created_at': vendor.createdAt.toIso8601String(),
+            if (vendor.metadata.isNotEmpty) 'metadata': vendor.metadata,
           },
         )
         .toList();
     return toCsv(rows);
   }
 
-  Future<void> _mutateVendor(int id, Map<String, dynamic> changes) async {
+  Future<void> _executeMutation(
+    Future<void> Function() mutation, {
+    bool clearSelection = false,
+  }) async {
     try {
-      final updated = state.usingMock
-          ? _mock
-                .vendors(
-                  page: state.filter.page,
-                  pageSize: state.filter.pageSize,
-                )
-                .items
-                .firstWhere((element) => element.id == id)
-                .copyWith(
-                  isVerified: changes['is_verified'] as bool? ?? false,
-                  isActive: changes['is_active'] as bool? ?? true,
-                  notes: changes['notes'] as String?,
-                )
-          : await _repo.patch(id, changes);
+      if (state.usingMock) {
+        if (clearSelection) {
+          state = state.copyWith(selected: <int>{});
+        }
+        await load(forceMock: true);
+        return;
+      }
 
-      final current = state.data.valueOrNull;
-      if (current == null) return;
-      final updatedItems = current.items
-          .map((vendor) => vendor.id == id ? updated : vendor)
-          .toList();
-      state = state.copyWith(
-        data: AsyncValue.data(
-          Pagination(
-            items: updatedItems,
-            total: current.total,
-            page: current.page,
-            pageSize: current.pageSize,
-          ),
-        ),
-      );
+      await mutation();
+      if (clearSelection) {
+        state = state.copyWith(selected: <int>{});
+      }
+      await load();
     } on AdminEndpointMissing catch (missing) {
       state = state.copyWith(missingEndpoint: missing, usingMock: true);
       await load(forceMock: true);

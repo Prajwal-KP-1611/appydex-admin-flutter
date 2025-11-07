@@ -125,6 +125,9 @@ class ApiClient {
                headers: {'Accept': 'application/json', 'X-API-Version': 'v1'},
              ),
            ) {
+    // Debug: Print the resolved base URL
+    print('🔧 ApiClient initialized with baseUrl: ${_dio.options.baseUrl}');
+    
     _dio.interceptors.add(
       QueuedInterceptorsWrapper(
         onRequest: _onRequest,

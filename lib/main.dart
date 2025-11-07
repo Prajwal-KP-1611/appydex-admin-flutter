@@ -25,12 +25,21 @@ import 'routes.dart';
 import 'core/navigation/app_route_observer.dart';
 import 'core/navigation/last_route.dart';
 
+const _apiBaseOverride = String.fromEnvironment(
+  'API_BASE_URL',
+  defaultValue: '',
+);
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final config = await AppConfig.load(flavor: kAppFlavor);
 
-  // Force reset to localhost for development
-  await config.clearApiBaseUrl();
+  if (_apiBaseOverride.isNotEmpty) {
+    await config.setApiBaseUrl(_apiBaseOverride);
+    print('🌐 API Base URL overridden via dart define: ${config.apiBaseUrl}');
+  } else {
+    print('🌐 API Base URL resolved: ${config.apiBaseUrl}');
+  }
 
   // Load admin token from preferences
   final prefs = await SharedPreferences.getInstance();

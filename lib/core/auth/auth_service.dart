@@ -76,9 +76,9 @@ class AuthService {
       };
       // Debug print for verification
       print('LOGIN PAYLOAD: ${jsonEncode(payload)}');
-      print('LOGIN URL: ${_apiClient.dio.options.baseUrl}/auth/login');
+      print('LOGIN URL: ${_apiClient.dio.options.baseUrl}/admin/auth/login');
       final response = await _apiClient.dio.post<Map<String, dynamic>>(
-        '/auth/login',
+        '/admin/auth/login',
         data: payload,
         options: Options(
           extra: const {'skipAuth': true},

@@ -13,14 +13,13 @@ import '../../widgets/filter_row.dart';
 import '../../widgets/status_chip.dart';
 import '../../core/export_util.dart';
 import '../../widgets/trace_snackbar.dart';
+import '../../widgets/vendor_approval_dialogs.dart';
 import 'vendor_detail_screen.dart';
 
 class VendorsListArgs {
-  const VendorsListArgs({this.verified, this.status, this.planCode});
+  const VendorsListArgs({this.status});
 
-  final bool? verified;
   final String? status;
-  final String? planCode;
 }
 
 class VendorsListScreen extends ConsumerStatefulWidget {
@@ -34,7 +33,6 @@ class VendorsListScreen extends ConsumerStatefulWidget {
 
 class _VendorsListScreenState extends ConsumerState<VendorsListScreen> {
   late final TextEditingController _searchController;
-  DateTimeRange? _createdRange;
   bool _initialised = false;
 
   @override
@@ -59,13 +57,7 @@ class _VendorsListScreenState extends ConsumerState<VendorsListScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final args = widget.initialArguments;
         if (args is VendorsListArgs) {
-          notifier.updateFilter(
-            state.filter.copyWith(
-              verified: args.verified,
-              status: args.status,
-              planCode: args.planCode,
-            ),
-          );
+          notifier.updateFilter(state.filter.copyWith(status: args.status));
         }
       });
       _initialised = true;
@@ -109,7 +101,7 @@ class _VendorsListScreenState extends ConsumerState<VendorsListScreen> {
                         child: TextField(
                           controller: _searchController,
                           decoration: const InputDecoration(
-                            labelText: 'Search (name or email)',
+                            labelText: 'Search (company or slug)',
                             prefixIcon: Icon(Icons.search),
                           ),
                           onSubmitted: (value) => notifier.updateFilter(
@@ -123,84 +115,20 @@ class _VendorsListScreenState extends ConsumerState<VendorsListScreen> {
                         items: const <DropdownMenuItem<String?>>[
                           DropdownMenuItem(value: null, child: Text('All')),
                           DropdownMenuItem(
-                            value: 'active',
-                            child: Text('Active'),
+                            value: 'pending',
+                            child: Text('Pending'),
                           ),
                           DropdownMenuItem(
-                            value: 'inactive',
-                            child: Text('Inactive'),
+                            value: 'verified',
+                            child: Text('Verified'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'rejected',
+                            child: Text('Rejected'),
                           ),
                         ],
                         onChanged: (value) => notifier.updateFilter(
                           state.filter.copyWith(status: value, page: 1),
-                        ),
-                      ),
-                      DropdownButtonFormField<String?>(
-                        initialValue: state.filter.verified == null
-                            ? null
-                            : (state.filter.verified! ? 'true' : 'false'),
-                        decoration: const InputDecoration(
-                          labelText: 'Verified',
-                        ),
-                        items: const <DropdownMenuItem<String?>>[
-                          DropdownMenuItem(value: null, child: Text('All')),
-                          DropdownMenuItem(
-                            value: 'true',
-                            child: Text('Verified'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'false',
-                            child: Text('Unverified'),
-                          ),
-                        ],
-                        onChanged: (value) => notifier.updateFilter(
-                          state.filter.copyWith(
-                            verified: value == null
-                                ? null
-                                : value == 'true'
-                                ? true
-                                : false,
-                            page: 1,
-                          ),
-                        ),
-                      ),
-                      SizedBox(
-                        width: 180,
-                        child: TextField(
-                          decoration: const InputDecoration(
-                            labelText: 'Plan code',
-                          ),
-                          onSubmitted: (value) => notifier.updateFilter(
-                            state.filter.copyWith(
-                              planCode: value.isEmpty ? null : value,
-                              page: 1,
-                            ),
-                          ),
-                        ),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: () async {
-                          final range = await showDateRangePicker(
-                            context: context,
-                            firstDate: DateTime(2020),
-                            lastDate: DateTime.now(),
-                            initialDateRange: _createdRange,
-                          );
-                          if (!context.mounted) return;
-                          setState(() => _createdRange = range);
-                          notifier.updateFilter(
-                            state.filter.copyWith(
-                              createdAfter: range?.start,
-                              createdBefore: range?.end,
-                              page: 1,
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.calendar_today, size: 16),
-                        label: Text(
-                          _createdRange == null
-                              ? 'Created date'
-                              : '${_createdRange!.start.toLocal().toShort()} - ${_createdRange!.end.toLocal().toShort()}',
                         ),
                       ),
                     ];
@@ -240,7 +168,7 @@ class _VendorsListScreenState extends ConsumerState<VendorsListScreen> {
                 LayoutBuilder(
                   builder: (context, constraints) {
                     final isNarrow = constraints.maxWidth < 900;
-                    if (!isNarrow || rows.isEmpty || rows.first.isVerified) {
+                    if (!isNarrow || rows.isEmpty || !rows.first.isPending) {
                       return const SizedBox.shrink();
                     }
                     return Align(
@@ -299,31 +227,6 @@ class _VendorsListScreenState extends ConsumerState<VendorsListScreen> {
                         child: const Text('Verify selected'),
                       ),
                       const SizedBox(width: 12),
-                      OutlinedButton(
-                        onPressed: state.selected.isEmpty
-                            ? null
-                            : () async {
-                                final confirmed = await showConfirmDialog(
-                                  context,
-                                  title: 'Bulk deactivate',
-                                  message:
-                                      'Deactivate ${state.selected.length} vendors?',
-                                  confirmLabel: 'Deactivate',
-                                  isDestructive: true,
-                                );
-                                if (confirmed != true) return;
-                                await notifier.bulkDeactivate();
-                                if (!context.mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  buildTraceSnackbar(
-                                    'Vendors deactivated',
-                                    traceId: lastTraceId,
-                                  ),
-                                );
-                              },
-                        child: const Text('Deactivate selected'),
-                      ),
-                      const SizedBox(width: 12),
                       OutlinedButton.icon(
                         onPressed: rows.isEmpty
                             ? null
@@ -370,13 +273,11 @@ class _VendorsListScreenState extends ConsumerState<VendorsListScreen> {
                   child: DataTableSimple(
                     columns: const [
                       DataTableSimpleColumn(label: 'Select', flex: 1),
-                      DataTableSimpleColumn(label: 'Vendor', flex: 3),
-                      DataTableSimpleColumn(label: 'Owner', flex: 2),
+                      DataTableSimpleColumn(label: 'Company', flex: 3),
+                      DataTableSimpleColumn(label: 'Slug', flex: 2),
                       DataTableSimpleColumn(label: 'Contact', flex: 2),
-                      DataTableSimpleColumn(label: 'Plan', flex: 1),
-                      DataTableSimpleColumn(label: 'Verified', flex: 1),
-                      DataTableSimpleColumn(label: 'Onboarding', flex: 1),
-                      DataTableSimpleColumn(label: 'Created At', flex: 2),
+                      DataTableSimpleColumn(label: 'Status', flex: 1),
+                      DataTableSimpleColumn(label: 'Created', flex: 2),
                       DataTableSimpleColumn(label: 'Actions', flex: 2),
                     ],
                     rows: rows
@@ -388,23 +289,34 @@ class _VendorsListScreenState extends ConsumerState<VendorsListScreen> {
                                   notifier.toggleSelection(vendor.id),
                             ),
                             _VendorNameCell(vendor: vendor),
-                            Text(vendor.ownerEmail),
-                            Text(vendor.phone ?? '—'),
-                            Text(vendor.planCode ?? '—'),
-                            StatusChip(
-                              label: vendor.isVerified ? 'Verified' : 'Pending',
-                              color: vendor.isVerified
-                                  ? Colors.green
-                                  : theme.colorScheme.secondary,
+                            Text(vendor.slug),
+                            Builder(
+                              builder: (_) {
+                                final contacts = [
+                                  if (vendor.contactEmail != null)
+                                    vendor.contactEmail!,
+                                  if (vendor.contactPhone != null)
+                                    vendor.contactPhone!,
+                                ].where((value) => value.isNotEmpty).toList();
+                                return Text(
+                                  contacts.isEmpty ? '—' : contacts.join('\n'),
+                                );
+                              },
                             ),
-                            Text('${(vendor.onboardingScore * 100).round()}%'),
-                            Text(vendor.createdAt.toLocal().toString()),
+                            StatusChip(
+                              label: vendor.status.toUpperCase(),
+                              color: _statusColor(theme, vendor.status),
+                            ),
+                            Text(
+                              MaterialLocalizations.of(
+                                context,
+                              ).formatMediumDate(vendor.createdAt),
+                            ),
                             _VendorActions(
                               vendor: vendor,
                               onView: () => _openVendorDetail(context, vendor),
-                              onVerify: vendor.isVerified
-                                  ? null
-                                  : () async {
+                              onVerify: vendor.isPending
+                                  ? () async {
                                       await notifier.verifyVendor(vendor.id);
                                       if (!context.mounted) return;
                                       ScaffoldMessenger.of(
@@ -415,33 +327,42 @@ class _VendorsListScreenState extends ConsumerState<VendorsListScreen> {
                                           traceId: lastTraceId,
                                         ),
                                       );
-                                    },
-                              onToggleActive: () async {
-                                await notifier.toggleActive(
-                                  vendor.id,
-                                  !vendor.isActive,
-                                );
-                                if (!context.mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  buildTraceSnackbar(
-                                    vendor.isActive
-                                        ? 'Vendor deactivated'
-                                        : 'Vendor activated',
-                                    traceId: lastTraceId,
-                                  ),
-                                );
-                              },
+                                    }
+                                  : null,
+                              onReject: vendor.isPending
+                                  ? () async {
+                                      final reason = await showDialog<String>(
+                                        context: context,
+                                        builder: (context) =>
+                                            RejectVendorDialog(
+                                              vendorName: vendor.companyName,
+                                            ),
+                                      );
+                                      if (reason == null) return;
+                                      await notifier.rejectVendor(
+                                        vendor.id,
+                                        reason: reason,
+                                      );
+                                      if (!context.mounted) return;
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        buildTraceSnackbar(
+                                          'Vendor rejected',
+                                          traceId: lastTraceId,
+                                        ),
+                                      );
+                                    }
+                                  : null,
                               onExport: () {
                                 final csv = toCsv([
                                   {
                                     'id': vendor.id,
-                                    'name': vendor.name,
-                                    'owner_email': vendor.ownerEmail,
-                                    'phone': vendor.phone ?? '',
-                                    'plan_code': vendor.planCode ?? '',
-                                    'is_active': vendor.isActive,
-                                    'is_verified': vendor.isVerified,
-                                    'onboarding_score': vendor.onboardingScore,
+                                    'company_name': vendor.companyName,
+                                    'slug': vendor.slug,
+                                    'status': vendor.status,
+                                    'contact_email': vendor.contactEmail ?? '',
+                                    'contact_phone': vendor.contactPhone ?? '',
                                     'created_at': vendor.createdAt
                                         .toIso8601String(),
                                   },
@@ -509,9 +430,19 @@ class _VendorNameCell extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(vendor.name, style: Theme.of(context).textTheme.titleMedium),
-        if (vendor.notes != null && vendor.notes!.isNotEmpty)
-          Text(vendor.notes!, style: Theme.of(context).textTheme.bodySmall),
+        Text(
+          vendor.companyName,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        Text(
+          'User #${vendor.userId}',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        if (vendor.businessType != null)
+          Text(
+            vendor.businessType!,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
       ],
     );
   }
@@ -521,30 +452,27 @@ class _VendorActions extends StatelessWidget {
   const _VendorActions({
     required this.vendor,
     required this.onView,
-    required this.onToggleActive,
     required this.onExport,
     this.onVerify,
+    this.onReject,
   });
 
   final Vendor vendor;
   final VoidCallback onView;
   final VoidCallback? onVerify;
-  final VoidCallback onToggleActive;
+  final VoidCallback? onReject;
   final VoidCallback onExport;
 
   @override
   Widget build(BuildContext context) {
-    final isNarrow = MediaQuery.of(context).size.width < 900;
     return Wrap(
       spacing: 8,
       children: [
         TextButton(onPressed: onView, child: const Text('Detail')),
-        if (onVerify != null && !isNarrow)
+        if (onVerify != null)
           TextButton(onPressed: onVerify, child: const Text('Verify')),
-        TextButton(
-          onPressed: onToggleActive,
-          child: Text(vendor.isActive ? 'Deactivate' : 'Activate'),
-        ),
+        if (onReject != null)
+          TextButton(onPressed: onReject, child: const Text('Reject')),
         IconButton(
           tooltip: 'Export vendor CSV',
           onPressed: onExport,
@@ -555,8 +483,14 @@ class _VendorActions extends StatelessWidget {
   }
 }
 
-extension _DateTimeExt on DateTime {
-  String toShort() {
-    return '${year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}';
+Color _statusColor(ThemeData theme, String status) {
+  switch (status) {
+    case 'verified':
+      return Colors.green;
+    case 'rejected':
+      return theme.colorScheme.error;
+    case 'pending':
+    default:
+      return theme.colorScheme.secondary;
   }
 }

@@ -18,7 +18,7 @@ Future<VendorVerificationResult?> showVendorVerificationDialog(
     context: context,
     builder: (context) {
       return AlertDialog(
-        title: Text('Verify ${vendor.name}'),
+        title: Text('Verify ${vendor.companyName}'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

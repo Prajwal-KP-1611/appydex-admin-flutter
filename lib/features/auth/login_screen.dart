@@ -195,8 +195,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             errorStr.contains('connection refused') ||
             errorStr.contains('socketexception') ||
             errorStr.contains('network')) {
+          final apiUrl = ref.read(apiClientProvider).dio.options.baseUrl;
           message =
-              '🌐 Cannot connect to server.\n\nPlease ensure the backend is running at:\nhttp://localhost:16110';
+              '🌐 Cannot connect to server.\n\nPlease ensure the backend is running at:\n$apiUrl';
         } else if (errorStr.contains('timeout')) {
           message =
               '⏱️ Request timed out.\n\nPlease check your network connection and try again.';

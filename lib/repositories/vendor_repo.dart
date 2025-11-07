@@ -1,5 +1,4 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/api_client.dart';
@@ -16,16 +15,16 @@ class VendorRepository {
   /// List vendors
   /// GET /api/v1/admin/vendors
   Future<Pagination<Vendor>> list({
-    int skip = 0,
-    int limit = 100,
+    int page = 1,
+    int pageSize = 20,
     String? status,
-    String? search,
+    String? query,
   }) async {
     final params = <String, dynamic>{
-      'skip': skip,
-      'limit': limit,
+      'page': page,
+      'page_size': pageSize,
       if (status != null && status.isNotEmpty) 'status': status,
-      if (search != null && search.isNotEmpty) 'search': search,
+      if (query != null && query.isNotEmpty) 'q': query,
     };
 
     try {
@@ -59,43 +58,24 @@ class VendorRepository {
     }
   }
 
-  Future<Vendor> patch(int id, Map<String, dynamic> changes) async {
-    try {
-      final response = await _client.requestAdmin<Map<String, dynamic>>(
-        '/admin/vendors/$id',
-        method: 'PATCH',
-        data: changes,
-        options: idempotentOptions(),
-      );
-      return Vendor.fromJson(response.data ?? const {});
-    } on DioException catch (error) {
-      if (error.response?.statusCode == 404) {
-        throw AdminEndpointMissing('admin/vendors/:id');
-      }
-      rethrow;
-    }
-  }
-
   /// Verify or reject a vendor
-  /// POST /api/v1/admin/vendors/{vendor_id}/verify
-  /// Request: { "action": "approve" | "reject", "notes": "..." }
-  /// Response: { "vendor_id": 1, "status": "verified", "verified_by": 10, "verified_at": "...", "notes": "..." }
-  Future<VendorVerificationResult> verifyOrReject({
+  /// POST /api/v1/admin/vendors/{vendor_id}/verify?status=verified|rejected
+  Future<VendorStatusChangeResult> verifyOrReject({
     required int id,
-    required String action, // "approve" or "reject"
+    required String status, // "verified" or "rejected"
     String? notes,
   }) async {
     try {
       final response = await _client.requestAdmin<Map<String, dynamic>>(
         '/admin/vendors/$id/verify',
         method: 'POST',
-        data: {
-          'action': action,
+        queryParameters: {
+          'status': status,
           if (notes != null && notes.isNotEmpty) 'notes': notes,
         },
         options: idempotentOptions(),
       );
-      return VendorVerificationResult.fromJson(response.data ?? const {});
+      return VendorStatusChangeResult.fromJson(response.data ?? const {});
     } on DioException catch (error) {
       if (error.response?.statusCode == 404) {
         throw AdminEndpointMissing('admin/vendors/:id/verify');
@@ -104,142 +84,27 @@ class VendorRepository {
     }
   }
 
-  /// Verify/approve a vendor (legacy method for backward compatibility)
-  Future<Vendor> verify(int id, {String? notes}) async {
-    final result = await verifyOrReject(
-      id: id,
-      action: 'approve',
-      notes: notes,
-    );
-    // Return updated vendor
-    return get(result.vendorId);
+  Future<VendorStatusChangeResult> verify(int id, {String? notes}) {
+    return verifyOrReject(id: id, status: 'verified', notes: notes);
   }
 
-  /// Reject a vendor (legacy method for backward compatibility)
-  Future<Vendor> reject(int id, {required String reason}) async {
-    final result = await verifyOrReject(
-      id: id,
-      action: 'reject',
-      notes: reason,
-    );
-    // Return updated vendor
-    return get(result.vendorId);
+  Future<VendorStatusChangeResult> reject(int id, {required String reason}) {
+    return verifyOrReject(id: id, status: 'rejected', notes: reason);
   }
 
-  /// Get vendor documents (KYC, etc.)
+  /// Get vendor documents (KYC, etc.) via vendor detail endpoint.
   Future<List<VendorDocument>> getDocuments(int id) async {
-    try {
-      final response = await _client.requestAdmin<List<dynamic>>(
-        '/admin/vendors/$id/documents',
-      );
-      final documents = response.data ?? [];
-      return documents
-          .map((doc) => VendorDocument.fromJson(doc as Map<String, dynamic>))
-          .toList();
-    } on DioException catch (error) {
-      if (error.response?.statusCode == 404) {
-        // Return empty list if endpoint not found
-        return [];
-      }
-      rethrow;
-    }
-  }
-
-  /// Bulk verify multiple vendors
-  Future<List<Vendor>> bulkVerify(List<int> vendorIds, {String? notes}) async {
-    try {
-      final response = await _client.requestAdmin<List<dynamic>>(
-        '/admin/vendors/bulk_verify',
-        method: 'POST',
-        data: {
-          'vendor_ids': vendorIds,
-          if (notes != null && notes.isNotEmpty) 'notes': notes,
-        },
-        options: idempotentOptions(),
-      );
-      final vendors = response.data ?? [];
-      return vendors
-          .map((v) => Vendor.fromJson(v as Map<String, dynamic>))
-          .toList();
-    } on DioException catch (error) {
-      if (error.response?.statusCode == 404) {
-        throw AdminEndpointMissing('admin/vendors/bulk_verify');
-      }
-      rethrow;
-    }
-  }
-}
-
-/// Vendor document model (for KYC, etc.)
-class VendorDocument {
-  const VendorDocument({
-    required this.id,
-    required this.vendorId,
-    required this.type,
-    required this.fileName,
-    required this.url,
-    required this.uploadedAt,
-    this.status = 'pending',
-  });
-
-  final String id;
-  final int vendorId;
-  final String type; // 'id_proof', 'address_proof', 'business_license', etc.
-  final String fileName;
-  final String url; // Presigned S3 URL
-  final String status; // 'pending', 'approved', 'rejected'
-  final DateTime uploadedAt;
-
-  factory VendorDocument.fromJson(Map<String, dynamic> json) {
-    return VendorDocument(
-      id: json['id']?.toString() ?? '',
-      vendorId: json['vendor_id'] as int? ?? 0,
-      type: json['type'] as String? ?? 'unknown',
-      fileName: json['file_name'] as String? ?? '',
-      url: json['url'] as String? ?? '',
-      status: json['status'] as String? ?? 'pending',
-      uploadedAt: json['uploaded_at'] != null
-          ? DateTime.parse(json['uploaded_at'] as String)
-          : DateTime.now(),
-    );
-  }
-
-  String get displayType {
-    switch (type) {
-      case 'id_proof':
-        return 'ID Proof';
-      case 'address_proof':
-        return 'Address Proof';
-      case 'business_license':
-        return 'Business License';
-      case 'tax_document':
-        return 'Tax Document';
-      default:
-        return type.replaceAll('_', ' ').toUpperCase();
-    }
-  }
-
-  IconData get typeIcon {
-    switch (type) {
-      case 'id_proof':
-        return Icons.badge;
-      case 'address_proof':
-        return Icons.location_on;
-      case 'business_license':
-        return Icons.business;
-      case 'tax_document':
-        return Icons.receipt;
-      default:
-        return Icons.description;
-    }
+    final vendor = await get(id);
+    return vendor.documents;
   }
 }
 
 /// Result of vendor verification/rejection operation
-class VendorVerificationResult {
-  const VendorVerificationResult({
+class VendorStatusChangeResult {
+  const VendorStatusChangeResult({
     required this.vendorId,
     required this.status,
+    this.previousStatus,
     this.verifiedBy,
     this.verifiedAt,
     this.notes,
@@ -247,14 +112,16 @@ class VendorVerificationResult {
 
   final int vendorId;
   final String status; // "verified" or "rejected"
+  final String? previousStatus;
   final int? verifiedBy;
   final DateTime? verifiedAt;
   final String? notes;
 
-  factory VendorVerificationResult.fromJson(Map<String, dynamic> json) {
-    return VendorVerificationResult(
+  factory VendorStatusChangeResult.fromJson(Map<String, dynamic> json) {
+    return VendorStatusChangeResult(
       vendorId: json['vendor_id'] as int? ?? 0,
       status: json['status'] as String? ?? '',
+      previousStatus: json['previous_status'] as String?,
       verifiedBy: json['verified_by'] as int?,
       verifiedAt: json['verified_at'] != null
           ? DateTime.tryParse(json['verified_at'] as String)

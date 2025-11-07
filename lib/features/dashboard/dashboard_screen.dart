@@ -78,7 +78,7 @@ class DashboardScreen extends ConsumerWidget {
         metrics['vendors_total'] ?? fallbackVendors?.total.toDouble();
     num? pendingVerification = metrics['vendors_pending_verification'];
     pendingVerification ??= fallbackVendors?.items
-        .where((vendor) => !vendor.isVerified)
+        .where((vendor) => vendor.isPending)
         .length
         .toDouble();
 
@@ -97,7 +97,7 @@ class DashboardScreen extends ConsumerWidget {
         onTap: () => Navigator.pushReplacementNamed(
           context,
           AppRoute.vendors.path,
-          arguments: const VendorsListArgs(verified: false),
+          arguments: const VendorsListArgs(status: 'pending'),
         ),
       ),
       _DashboardCard(

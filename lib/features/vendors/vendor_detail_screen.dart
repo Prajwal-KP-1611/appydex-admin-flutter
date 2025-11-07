@@ -18,7 +18,6 @@ import '../../widgets/vendor_approval_dialogs.dart';
 import '../../widgets/vendor_documents_dialog.dart';
 import '../shared/admin_sidebar.dart';
 import '../shared/confirm_dialog.dart';
-import 'vendor_verification_widget.dart';
 
 class VendorDetailArgs {
   const VendorDetailArgs({required this.vendorId, this.initialVendor});
@@ -191,14 +190,12 @@ class _VendorDetailViewState extends ConsumerState<_VendorDetailView> {
                       final notes = await showDialog<String>(
                         context: context,
                         builder: (context) =>
-                            ApproveVendorDialog(vendorName: vendor.name),
+                            ApproveVendorDialog(vendorName: vendor.companyName),
                       );
                       if (notes == null) return;
 
                       try {
-                        await ref
-                            .read(vendorsProvider.notifier)
-                            .verifyVendor(vendor.id, notes: notes);
+                        await notifier.verifyVendor(vendor.id, notes: notes);
                         if (!context.mounted) return;
                         ToastService.showSuccess(
                           context,
@@ -220,14 +217,12 @@ class _VendorDetailViewState extends ConsumerState<_VendorDetailView> {
                       final reason = await showDialog<String>(
                         context: context,
                         builder: (context) =>
-                            RejectVendorDialog(vendorName: vendor.name),
+                            RejectVendorDialog(vendorName: vendor.companyName),
                       );
                       if (reason == null) return;
 
                       try {
-                        await ref
-                            .read(vendorRepositoryProvider)
-                            .reject(vendor.id, reason: reason);
+                        await notifier.rejectVendor(vendor.id, reason: reason);
                         if (!context.mounted) return;
                         ToastService.showSuccess(context, 'Vendor rejected');
                         ref.invalidate(vendorDetailProvider(vendor.id));
@@ -245,58 +240,9 @@ class _VendorDetailViewState extends ConsumerState<_VendorDetailView> {
                   context: context,
                   builder: (context) => VendorDocumentsDialog(
                     vendorId: vendor.id,
-                    vendorName: vendor.name,
+                    vendorName: vendor.companyName,
                   ),
                 );
-              },
-              onVerify: vendor.isVerified
-                  ? null
-                  : () async {
-                      final result = await showVendorVerificationDialog(
-                        context,
-                        vendor: vendor,
-                      );
-                      if (result == null) return;
-                      if (result.approved) {
-                        await notifier.verifyVendor(
-                          vendor.id,
-                          notes: result.notes,
-                        );
-                        if (!context.mounted) return;
-                        _showSnack(context, 'Vendor verified', lastTraceId);
-                        ref.invalidate(vendorDetailProvider(vendor.id));
-                        ref.invalidate(vendorsProvider);
-                      } else {
-                        if (!context.mounted) return;
-                        _showSnack(
-                          context,
-                          'Verification pending more info',
-                          lastTraceId,
-                        );
-                      }
-                    },
-              onToggleActive: () async {
-                final confirm = await showConfirmDialog(
-                  context,
-                  title: vendor.isActive
-                      ? 'Deactivate vendor'
-                      : 'Activate vendor',
-                  message: vendor.isActive
-                      ? 'Deactivate ${vendor.name}?'
-                      : 'Activate ${vendor.name}?',
-                  confirmLabel: vendor.isActive ? 'Deactivate' : 'Activate',
-                  isDestructive: vendor.isActive,
-                );
-                if (confirm != true) return;
-                await notifier.toggleActive(vendor.id, !vendor.isActive);
-                if (!context.mounted) return;
-                _showSnack(
-                  context,
-                  vendor.isActive ? 'Vendor deactivated' : 'Vendor activated',
-                  lastTraceId,
-                );
-                ref.invalidate(vendorDetailProvider(vendor.id));
-                ref.invalidate(vendorsProvider);
               },
               onImpersonate: () {
                 if (_impersonationModalShown) return;
@@ -366,20 +312,16 @@ class _VendorDetailViewState extends ConsumerState<_VendorDetailView> {
 class _VendorSummaryCard extends StatelessWidget {
   const _VendorSummaryCard({
     required this.vendor,
-    required this.onVerify,
     required this.onApprove,
     required this.onReject,
     required this.onViewDocuments,
-    required this.onToggleActive,
     required this.onImpersonate,
   });
 
   final Vendor vendor;
-  final VoidCallback? onVerify;
   final VoidCallback? onApprove;
   final VoidCallback? onReject;
   final VoidCallback onViewDocuments;
-  final VoidCallback onToggleActive;
   final VoidCallback onImpersonate;
 
   @override
@@ -395,20 +337,13 @@ class _VendorSummaryCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    vendor.name,
+                    vendor.companyName,
                     style: theme.textTheme.headlineSmall,
                   ),
                 ),
                 StatusChip(
-                  label: vendor.isActive ? 'Active' : 'Inactive',
-                  color: vendor.isActive ? Colors.green : Colors.grey,
-                ),
-                const SizedBox(width: 8),
-                StatusChip(
-                  label: vendor.isVerified ? 'Verified' : 'Pending',
-                  color: vendor.isVerified
-                      ? Colors.green
-                      : theme.colorScheme.secondary,
+                  label: vendor.status.toUpperCase(),
+                  color: _statusColor(theme, vendor.status),
                 ),
               ],
             ),
@@ -417,15 +352,20 @@ class _VendorSummaryCard extends StatelessWidget {
               spacing: 16,
               runSpacing: 8,
               children: [
-                _InfoChip('Owner', vendor.ownerEmail),
-                if (vendor.phone != null) _InfoChip('Phone', vendor.phone!),
-                if (vendor.planCode != null)
-                  _InfoChip('Plan', vendor.planCode!),
+                _InfoChip('Slug', vendor.slug),
+                _InfoChip('User', '#${vendor.userId}'),
+                if (vendor.contactEmail != null)
+                  _InfoChip('Email', vendor.contactEmail!),
+                if (vendor.contactPhone != null)
+                  _InfoChip('Phone', vendor.contactPhone!),
+                if (vendor.businessType != null)
+                  _InfoChip('Business', vendor.businessType!),
                 _InfoChip(
-                  'Onboarding',
-                  '${(vendor.onboardingScore * 100).round()}%',
+                  'Created',
+                  MaterialLocalizations.of(
+                    context,
+                  ).formatFullDate(vendor.createdAt),
                 ),
-                _InfoChip('Created', vendor.createdAt.toLocal().toString()),
               ],
             ),
             const SizedBox(height: 16),
@@ -456,20 +396,6 @@ class _VendorSummaryCard extends StatelessWidget {
                   onPressed: onViewDocuments,
                   icon: const Icon(Icons.folder_open),
                   label: const Text('Documents'),
-                ),
-
-                // Legacy verify button (kept for compatibility)
-                if (onVerify != null && onApprove == null)
-                  FilledButton.icon(
-                    onPressed: onVerify,
-                    icon: const Icon(Icons.verified_outlined),
-                    label: const Text('Verify'),
-                  ),
-
-                OutlinedButton.icon(
-                  onPressed: onToggleActive,
-                  icon: Icon(vendor.isActive ? Icons.pause : Icons.play_arrow),
-                  label: Text(vendor.isActive ? 'Deactivate' : 'Activate'),
                 ),
                 TextButton.icon(
                   onPressed: onImpersonate,
@@ -578,4 +504,16 @@ List<Map<String, dynamic>> _normalizeList(List<dynamic>? data) {
             item is Map<String, dynamic> ? item : {'value': item.toString()},
       )
       .toList();
+}
+
+Color _statusColor(ThemeData theme, String status) {
+  switch (status) {
+    case 'verified':
+      return Colors.green;
+    case 'rejected':
+      return theme.colorScheme.error;
+    case 'pending':
+    default:
+      return theme.colorScheme.secondary;
+  }
 }
