@@ -2,6 +2,7 @@ import 'features/payments/payments_list_screen.dart';
 import 'features/analytics/analytics_dashboard_screen.dart';
 import 'features/campaigns/referrals_screen.dart';
 import 'features/reviews/reviews_list_screen.dart';
+import 'features/reviews/vendor_flags_queue_screen.dart';
 import 'features/system/system_health_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -273,6 +274,11 @@ class _AppydexAdminAppState extends ConsumerState<AppydexAdminApp> {
             return MaterialPageRoute(
               settings: settings,
               builder: (_) => const ReviewsListScreen(),
+            );
+          case '/reviews/flags':
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const VendorFlagsQueueScreen(),
             );
           case '/reports':
             return MaterialPageRoute(

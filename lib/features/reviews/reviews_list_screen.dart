@@ -6,6 +6,7 @@ import '../../features/shared/admin_sidebar.dart';
 import '../../models/review.dart';
 import '../../repositories/reviews_repo.dart';
 import '../../routes.dart';
+import '../../core/permissions.dart';
 
 /// Reviews moderation screen
 /// Allows admins to approve, hide, remove, and restore reviews
@@ -91,6 +92,12 @@ class _ReviewsListScreenState extends ConsumerState<ReviewsListScreen> {
                             .filterByFlagged(_flaggedFilter);
                       },
                       avatar: const Icon(Icons.flag, size: 16),
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton.icon(
+                      onPressed: () => Navigator.pushNamed(context, '/reviews/flags'),
+                      icon: const Icon(Icons.flag_outlined, size: 18),
+                      label: const Text('Flags Queue'),
                     ),
                     const Spacer(),
                     FilledButton.icon(
@@ -295,6 +302,7 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
   @override
   Widget build(BuildContext context) {
     final review = widget.review;
+    final hasUpdatePermission = can(ref, Permissions.reviewsUpdate);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -418,7 +426,7 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
             // Action buttons
             Row(
               children: [
-                if (review.isPending || review.isHidden) ...[
+                if (hasUpdatePermission && (review.isPending || review.isHidden)) ...[
                   FilledButton.icon(
                     onPressed: _isProcessing ? null : () => _approveReview(),
                     icon: const Icon(Icons.check_circle, size: 18),
@@ -429,7 +437,7 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
                   ),
                   const SizedBox(width: 12),
                 ],
-                if (review.isApproved || review.isPending) ...[
+                if (hasUpdatePermission && (review.isApproved || review.isPending)) ...[
                   OutlinedButton.icon(
                     onPressed: _isProcessing ? null : () => _hideReview(),
                     icon: const Icon(Icons.visibility_off, size: 18),
@@ -437,7 +445,7 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
                   ),
                   const SizedBox(width: 12),
                 ],
-                if (review.isHidden) ...[
+                if (hasUpdatePermission && review.isHidden) ...[
                   OutlinedButton.icon(
                     onPressed: _isProcessing ? null : () => _restoreReview(),
                     icon: const Icon(Icons.restore, size: 18),
@@ -445,7 +453,7 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
                   ),
                   const SizedBox(width: 12),
                 ],
-                if (!review.isRemoved) ...[
+                if (hasUpdatePermission && !review.isRemoved) ...[
                   OutlinedButton.icon(
                     onPressed: _isProcessing ? null : () => _removeReview(),
                     icon: const Icon(Icons.delete_forever, size: 18),

@@ -5,6 +5,7 @@ import '../../features/shared/admin_sidebar.dart';
 import '../../providers/analytics_dashboard_provider.dart';
 import '../../widgets/export_button.dart';
 import '../../routes.dart';
+import '../../core/permissions.dart';
 
 class AnalyticsDashboardScreen extends ConsumerWidget {
   const AnalyticsDashboardScreen({super.key});
@@ -12,21 +13,24 @@ class AnalyticsDashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(analyticsDashboardProvider);
+    final hasView = can(ref, Permissions.analyticsView);
+    final hasExport = can(ref, Permissions.analyticsExport);
 
     return AdminScaffold(
       currentRoute: AppRoute.analytics,
       title: 'Analytics',
       actions: [
-        ExportButton(
-          label: 'Export (CSV)',
-          endpoint: '/admin/analytics/export',
-          exportData: {
-            'start_date': state.start.toIso8601String(),
-            'end_date': state.end.toIso8601String(),
-            'format': 'csv',
-          },
-          variant: ExportButtonVariant.outlined,
-        ),
+        if (hasExport)
+          ExportButton(
+            label: 'Export (CSV)',
+            endpoint: '/admin/analytics/export',
+            exportData: {
+              'start_date': state.start.toIso8601String(),
+              'end_date': state.end.toIso8601String(),
+              'format': 'csv',
+            },
+            variant: ExportButtonVariant.outlined,
+          ),
         const SizedBox(width: 8),
       ],
       child: RefreshIndicator(
@@ -34,14 +38,26 @@ class AnalyticsDashboardScreen extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.all(24),
           children: [
-            _FiltersBar(state: state),
+            if (!hasView)
+              Card(
+                color: Theme.of(context).colorScheme.errorContainer,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    'You do not have permission to view analytics.',
+                    style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
+                  ),
+                ),
+              )
+            else
+              _FiltersBar(state: state),
             const SizedBox(height: 16),
-            if (state.isLoading)
+            if (hasView && state.isLoading)
               const Center(child: Padding(
                 padding: EdgeInsets.all(24),
                 child: CircularProgressIndicator(),
               )),
-            if (state.error != null)
+            if (hasView && state.error != null)
               Card(
                 color: Theme.of(context).colorScheme.errorContainer,
                 child: Padding(
@@ -49,7 +65,7 @@ class AnalyticsDashboardScreen extends ConsumerWidget {
                   child: Text('Failed to load analytics: ${state.error}'),
                 ),
               ),
-            if (!state.isLoading) ...[
+            if (hasView && !state.isLoading) ...[
               Row(
                 children: [
                   Expanded(child: _TopSearchesCard()),

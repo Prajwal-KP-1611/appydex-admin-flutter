@@ -93,7 +93,7 @@ void main() {
     final page = await setup.repo.list();
 
     expect(page.items, hasLength(1));
-    expect(page.items.first.name, 'Acme');
+    expect(page.items.first.companyName, 'Acme');
     // X-Admin-Token is deprecated; client should not send it.
     expect(captured.headers.containsKey('X-Admin-Token'), isFalse);
     expect(captured.path, '/admin/vendors');

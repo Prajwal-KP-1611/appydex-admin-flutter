@@ -6,6 +6,7 @@ import '../../features/shared/admin_sidebar.dart';
 import '../../models/payment_intent.dart';
 import '../../repositories/payment_repo.dart';
 import '../../routes.dart';
+import '../../core/permissions.dart';
 
 /// Payments list screen
 /// Read-only view of payment intents
@@ -507,7 +508,11 @@ class _PaymentDetailsDialogState extends ConsumerState<_PaymentDetailsDialog> {
   @override
   Widget build(BuildContext context) {
     final payment = widget.payment;
-    final canRefund = payment.isSucceeded;
+    // Permission gating
+    final hasRefundPermission = can(ref, Permissions.paymentsRefund);
+    final hasInvoicePermission = can(ref, Permissions.invoicesDownload);
+    final canRefund = payment.isSucceeded && hasRefundPermission;
+    final canDownloadInvoice = payment.isSucceeded && hasInvoicePermission;
 
     return AlertDialog(
       title: const Row(
@@ -543,7 +548,7 @@ class _PaymentDetailsDialogState extends ConsumerState<_PaymentDetailsDialog> {
       ),
       actions: [
         // Invoice download button
-        if (payment.isSucceeded)
+        if (canDownloadInvoice)
           TextButton.icon(
             onPressed: _isDownloadingInvoice ? null : _downloadInvoice,
             icon: _isDownloadingInvoice
