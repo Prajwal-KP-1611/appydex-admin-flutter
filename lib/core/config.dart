@@ -7,7 +7,34 @@ import 'package:shared_preferences/shared_preferences.dart';
 const kDefaultApiBaseUrl = 'https://api.appydex.co';
 
 /// Resolve the current build flavor from the `APP_FLAVOR` dart define.
-const kAppFlavor = String.fromEnvironment('APP_FLAVOR', defaultValue: 'prod');
+const kAppFlavor = String.fromEnvironment('APP_FLAVOR', defaultValue: 'staging');
+
+/// API base URL from dart-define (required for prod)
+const kApiBaseUrlDefine = String.fromEnvironment('API_BASE_URL', defaultValue: '');
+
+/// Mock mode from dart-define
+const kMockModeDefine = bool.fromEnvironment('MOCK_MODE', defaultValue: false);
+
+/// App version from dart-define
+const kAppVersion = String.fromEnvironment('APP_VERSION', defaultValue: 'dev');
+
+/// Validate production configuration at startup
+void assertProdConfig() {
+  if (kAppFlavor == 'prod') {
+    if (kApiBaseUrlDefine.isEmpty || !kApiBaseUrlDefine.startsWith('https://')) {
+      throw StateError(
+        'Invalid prod API_BASE_URL: must be HTTPS. '
+        'Build with: --dart-define=API_BASE_URL=https://api.appydex.com',
+      );
+    }
+    if (kMockModeDefine) {
+      throw StateError(
+        'MOCK_MODE must be false in prod. '
+        'Build with: --dart-define=MOCK_MODE=false',
+      );
+    }
+  }
+}
 
 /// Shared keys used when persisting configuration values.
 class _ConfigKeys {
@@ -34,10 +61,16 @@ class AppConfig {
     String defaultBaseUrl = kDefaultApiBaseUrl,
   }) async {
     final preferences = await SharedPreferences.getInstance();
+    
+    // Use dart-define API_BASE_URL if provided, otherwise use default
+    final effectiveBaseUrl = kApiBaseUrlDefine.isNotEmpty 
+        ? kApiBaseUrlDefine 
+        : defaultBaseUrl;
+    
     return AppConfig._(
       flavor: flavor,
       preferences: preferences,
-      defaultBaseUrl: defaultBaseUrl,
+      defaultBaseUrl: effectiveBaseUrl,
     );
   }
 
@@ -53,8 +86,13 @@ class AppConfig {
     await _preferences.remove(_ConfigKeys.apiBaseUrl(flavor));
   }
 
-  bool get mockMode =>
-      _preferences.getBool(_ConfigKeys.mockMode(flavor)) ?? false;
+  bool get mockMode {
+    // In prod, always return false regardless of saved preference
+    if (kAppFlavor == 'prod') return false;
+    // Use dart-define value if set, otherwise check saved preference
+    if (kMockModeDefine) return true;
+    return _preferences.getBool(_ConfigKeys.mockMode(flavor)) ?? false;
+  }
 
   Future<void> setMockMode(bool enabled) async {
     await _preferences.setBool(_ConfigKeys.mockMode(flavor), enabled);

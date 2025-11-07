@@ -1,12 +1,12 @@
 {
-    "name": "appydex_admin",
-    "short_name": "appydex_admin",
+    "name": "AppyDex Admin Dashboard",
+    "short_name": "AppyDex Admin",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "description": "AppyDex admin dashboard for managing vendors, services, subscriptions, and platform operations",
+    "orientation": "landscape",
     "prefer_related_applications": false,
     "icons": [
         {

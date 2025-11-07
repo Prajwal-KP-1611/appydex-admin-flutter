@@ -191,6 +191,78 @@ class ApiClient {
     _dio.close(force: true);
   }
 
+  /// POST with auto-generated Idempotency-Key for safe retries
+  Future<Response<T>> postIdempotent<T>(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+    String? idempotencyKey,
+  }) {
+    final key = idempotencyKey ?? _uuid.v4();
+    final mergedOptions = (options ?? Options()).copyWith(
+      extra: {
+        ...?options?.extra,
+        'idempotencyKey': key,
+      },
+    );
+    return requestAdmin<T>(
+      path,
+      method: 'POST',
+      data: data,
+      queryParameters: queryParameters,
+      options: mergedOptions,
+    );
+  }
+
+  /// PATCH with auto-generated Idempotency-Key for safe retries
+  Future<Response<T>> patchIdempotent<T>(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+    String? idempotencyKey,
+  }) {
+    final key = idempotencyKey ?? _uuid.v4();
+    final mergedOptions = (options ?? Options()).copyWith(
+      extra: {
+        ...?options?.extra,
+        'idempotencyKey': key,
+      },
+    );
+    return requestAdmin<T>(
+      path,
+      method: 'PATCH',
+      data: data,
+      queryParameters: queryParameters,
+      options: mergedOptions,
+    );
+  }
+
+  /// DELETE with auto-generated Idempotency-Key for safe retries
+  Future<Response<T>> deleteIdempotent<T>(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+    String? idempotencyKey,
+  }) {
+    final key = idempotencyKey ?? _uuid.v4();
+    final mergedOptions = (options ?? Options()).copyWith(
+      extra: {
+        ...?options?.extra,
+        'idempotencyKey': key,
+      },
+    );
+    return requestAdmin<T>(
+      path,
+      method: 'DELETE',
+      data: data,
+      queryParameters: queryParameters,
+      options: mergedOptions,
+    );
+  }
+
   Future<void> _onRequest(
     RequestOptions options,
     RequestInterceptorHandler handler,

@@ -32,6 +32,10 @@ const _apiBaseOverride = String.fromEnvironment(
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Validate production configuration before proceeding
+  assertProdConfig();
+  
   final config = await AppConfig.load(flavor: kAppFlavor);
 
   if (_apiBaseOverride.isNotEmpty) {
@@ -40,6 +44,10 @@ Future<void> main() async {
   } else {
     print('🌐 API Base URL resolved: ${config.apiBaseUrl}');
   }
+  
+  print('🏗️  Build flavor: $kAppFlavor');
+  print('📦 App version: $kAppVersion');
+  print('🔧 Mock mode: ${config.mockMode}');
 
   // Load admin token from preferences
   final prefs = await SharedPreferences.getInstance();
@@ -206,6 +214,13 @@ class _AppydexAdminAppState extends ConsumerState<AppydexAdminApp> {
               builder: (_) => const AuditLogsScreen(),
             );
           case '/diagnostics':
+            // Hide diagnostics route in production
+            if (kAppFlavor == 'prod') {
+              return MaterialPageRoute(
+                settings: settings,
+                builder: (_) => const DashboardScreen(),
+              );
+            }
             return MaterialPageRoute(
               settings: settings,
               builder: (_) => DiagnosticsScreen(initialBaseUrl: baseUrl),

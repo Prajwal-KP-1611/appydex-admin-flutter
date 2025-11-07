@@ -2,42 +2,46 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/auth/auth_service.dart';
+import '../../core/config.dart';
 import '../../routes.dart';
 import '../../core/navigation/last_route.dart';
 
 class AdminScaffold extends ConsumerWidget {
   List<Widget> _buildSectionedNav(BuildContext context, AppRoute currentRoute) {
     final widgets = <Widget>[];
+    // Filter out unavailable routes (like diagnostics in prod)
+    final availableNavItems = _allNavItems.where((item) => item.route.isAvailable).toList();
+    
     // Dashboard
-    widgets.add(_buildNavItem(context, _allNavItems.first, currentRoute));
+    widgets.add(_buildNavItem(context, availableNavItems.first, currentRoute));
     widgets.add(const SizedBox(height: 8));
 
     Widget section(String name) => _buildSectionHeader(context, name);
 
     // Management
     widgets.add(section('MANAGEMENT'));
-    for (final item in _allNavItems.where((i) => i.section == 'management')) {
+    for (final item in availableNavItems.where((i) => i.section == 'management')) {
       widgets.add(_buildNavItem(context, item, currentRoute));
     }
     widgets.add(const SizedBox(height: 8));
 
     // Commerce
     widgets.add(section('COMMERCE'));
-    for (final item in _allNavItems.where((i) => i.section == 'commerce')) {
+    for (final item in availableNavItems.where((i) => i.section == 'commerce')) {
       widgets.add(_buildNavItem(context, item, currentRoute));
     }
     widgets.add(const SizedBox(height: 8));
 
     // Engagement
     widgets.add(section('ENGAGEMENT'));
-    for (final item in _allNavItems.where((i) => i.section == 'engagement')) {
+    for (final item in availableNavItems.where((i) => i.section == 'engagement')) {
       widgets.add(_buildNavItem(context, item, currentRoute));
     }
     widgets.add(const SizedBox(height: 8));
 
     // System
     widgets.add(section('SYSTEM'));
-    for (final item in _allNavItems.where((i) => i.section == 'system')) {
+    for (final item in availableNavItems.where((i) => i.section == 'system')) {
       widgets.add(_buildNavItem(context, item, currentRoute));
     }
 
@@ -45,13 +49,16 @@ class AdminScaffold extends ConsumerWidget {
   }
 
   List<Widget> _buildDrawerItems(BuildContext context, AppRoute currentRoute) {
+    // Filter out unavailable routes (like diagnostics in prod)
+    final availableNavItems = _allNavItems.where((item) => item.route.isAvailable).toList();
+    
     final items = <Widget>[];
-    for (var i = 0; i < _allNavItems.length; i++) {
-      final item = _allNavItems[i];
+    for (var i = 0; i < availableNavItems.length; i++) {
+      final item = availableNavItems[i];
       if (i == 0) {
         // Dashboard (no header)
       } else {
-        final prev = _allNavItems[i - 1];
+        final prev = availableNavItems[i - 1];
         if (item.section != prev.section && item.section != null) {
           items.add(_buildSectionHeader(context, item.section!.toUpperCase()));
         }
@@ -90,9 +97,19 @@ class AdminScaffold extends ConsumerWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final useRail = constraints.maxWidth >= 1000;
+        
+        // Build environment chip
+        final envChip = _buildEnvironmentChip(context);
+        
         final appBar = AppBar(
           title: Text(title ?? _labelFor(currentRoute)),
-          actions: actions,
+          actions: [
+            if (envChip != null) ...[
+              envChip,
+              const SizedBox(width: 8),
+            ],
+            ...actions,
+          ],
         );
 
         if (useRail) {
@@ -197,6 +214,30 @@ class AdminScaffold extends ConsumerWidget {
           body: child,
         );
       },
+    );
+  }
+
+  Widget? _buildEnvironmentChip(BuildContext context) {
+    // Hide in production
+    if (kAppFlavor == 'prod') return null;
+    
+    final color = kAppFlavor == 'staging' 
+        ? Colors.orange 
+        : Colors.purple;
+    
+    return Chip(
+      label: Text(
+        kAppFlavor.toUpperCase(),
+        style: const TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      ),
+      backgroundColor: color,
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: VisualDensity.compact,
     );
   }
 
