@@ -17,7 +17,6 @@ import '../../widgets/trace_snackbar.dart';
 import '../../widgets/vendor_approval_dialogs.dart';
 import '../../widgets/vendor_documents_dialog.dart';
 import '../shared/admin_sidebar.dart';
-import '../shared/confirm_dialog.dart';
 
 class VendorDetailArgs {
   const VendorDetailArgs({required this.vendorId, this.initialVendor});
