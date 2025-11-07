@@ -6,3 +6,12 @@ class AdminEndpointMissing implements Exception {
   @override
   String toString() => 'AdminEndpointMissing($endpoint)';
 }
+
+class AdminValidationError implements Exception {
+  AdminValidationError(this.message);
+
+  final String message;
+
+  @override
+  String toString() => 'AdminValidationError: $message';
+}

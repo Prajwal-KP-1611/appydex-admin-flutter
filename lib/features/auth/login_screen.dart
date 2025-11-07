@@ -530,59 +530,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 : const Text('Login'),
                           ),
                         ],
-
-                        const SizedBox(height: 24),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppTheme.accentEmerald.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: AppTheme.accentEmerald.withOpacity(0.3),
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.info_outline,
-                                    color: AppTheme.accentEmerald,
-                                    size: 18,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Default Admin Credentials',
-                                    style: textTheme.labelMedium?.copyWith(
-                                      color: AppTheme.accentEmerald,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Email: admin@appydex.local',
-                                style: textTheme.bodySmall?.copyWith(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurface.withOpacity(0.85),
-                                  fontFamily: 'monospace',
-                                ),
-                              ),
-                              Text(
-                                'Password: admin123!@#',
-                                style: textTheme.bodySmall?.copyWith(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurface.withOpacity(0.85),
-                                  fontFamily: 'monospace',
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       ],
                     ),
                   ),

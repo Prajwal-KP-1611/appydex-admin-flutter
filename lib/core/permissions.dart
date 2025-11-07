@@ -4,15 +4,21 @@ import '../models/admin_role.dart';
 import 'auth/auth_service.dart';
 
 /// Provider that exposes the current admin's permissions as a Set
-/// For now, derive from active role. In future, backend may send explicit permissions list.
+/// Reads explicit permissions from backend when available, otherwise derives from active role.
 final permissionsProvider = Provider<Set<String>>((ref) {
   final session = ref.watch(adminSessionProvider);
   if (session == null) return const <String>{};
   
+  // If backend provides explicit permissions array, use it
+  if (session.permissions != null && session.permissions!.isNotEmpty) {
+    return session.permissions!.toSet();
+  }
+  
+  // Otherwise, fall back to role-based permissions (deprecated approach)
   final role = session.activeRole;
   
   // Generate permission set based on role
-  // TODO: Replace with actual permissions from backend when available
+  // TODO: Backend should provide explicit permissions[] in login/refresh response
   final permissions = <String>{};
   
   // Super admin gets all permissions

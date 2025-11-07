@@ -1,6 +1,8 @@
 import 'features/payments/payments_list_screen.dart';
+import 'features/analytics/analytics_dashboard_screen.dart';
 import 'features/campaigns/referrals_screen.dart';
 import 'features/reviews/reviews_list_screen.dart';
+import 'features/system/system_health_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -138,6 +140,7 @@ class _AppydexAdminAppState extends ConsumerState<AppydexAdminApp> {
         final protectedRoutes = <String>[
           '/',
           '/dashboard',
+          '/analytics',
           '/vendors',
           '/vendors/detail',
           '/subscriptions',
@@ -190,6 +193,11 @@ class _AppydexAdminAppState extends ConsumerState<AppydexAdminApp> {
             return MaterialPageRoute(
               settings: settings,
               builder: (_) => const DashboardScreen(),
+            );
+          case '/analytics':
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const AnalyticsDashboardScreen(),
             );
           case '/vendors':
             return MaterialPageRoute(
@@ -269,8 +277,7 @@ class _AppydexAdminAppState extends ConsumerState<AppydexAdminApp> {
           case '/reports':
             return MaterialPageRoute(
               settings: settings,
-              builder: (_) =>
-                  DiagnosticsScreen(initialBaseUrl: baseUrl), // placeholder
+              builder: (_) => const SystemHealthScreen(),
             );
           default:
             return MaterialPageRoute(

@@ -3,6 +3,7 @@ import 'core/config.dart';
 enum AppRoute {
   login('/login'),
   dashboard('/dashboard'),
+  analytics('/analytics'),
   admins('/admins'),
   vendors('/vendors'),
   vendorDetail('/vendors/detail'),

@@ -58,6 +58,7 @@ class AdminSession {
     this.adminId,
     this.email,
     this.expiresAt,
+    this.permissions,
   });
 
   final String accessToken;
@@ -67,6 +68,7 @@ class AdminSession {
   final String? adminId;
   final String? email;
   final DateTime? expiresAt;
+  final List<String>? permissions; // Explicit permissions from backend
 
   factory AdminSession.fromJson(Map<String, dynamic> json) {
     print('[AdminSession.fromJson] Input JSON keys: ${json.keys.join(", ")}');
@@ -113,6 +115,11 @@ class AdminSession {
     final email = (userData?['email'] ?? json['email']) as String?;
     print('[AdminSession.fromJson] Email: $email');
 
+    // Parse explicit permissions array from backend (optional)
+    final permissionsData = (userData?['permissions'] ?? json['permissions']) as List<dynamic>?;
+    final permissions = permissionsData?.map((p) => p.toString()).toList();
+    print('[AdminSession.fromJson] Explicit permissions: ${permissions?.length ?? 0} items');
+
     return AdminSession(
       accessToken: (json['access'] ?? json['access_token']) as String? ?? '',
       refreshToken: (json['refresh'] ?? json['refresh_token']) as String? ?? '',
@@ -123,6 +130,7 @@ class AdminSession {
       expiresAt: json['expires_at'] != null
           ? DateTime.parse(json['expires_at'] as String)
           : null,
+      permissions: permissions,
     );
   }
 
@@ -137,12 +145,14 @@ class AdminSession {
       'roles': roles.map((r) => r.value).toList(),
       'active_role': activeRole.value,
       'role': activeRole.value, // Also include for compatibility
+      if (permissions != null) 'permissions': permissions,
     },
     'roles': roles.map((r) => r.value).toList(),
     'active_role': activeRole.value,
     'role': activeRole.value,
     'admin_id': adminId,
     'email': email,
+    if (permissions != null) 'permissions': permissions,
     'expires_at': expiresAt?.toIso8601String(),
   };
 
@@ -161,6 +171,7 @@ class AdminSession {
     String? adminId,
     String? email,
     DateTime? expiresAt,
+    List<String>? permissions,
   }) {
     return AdminSession(
       accessToken: accessToken ?? this.accessToken,
@@ -170,6 +181,7 @@ class AdminSession {
       adminId: adminId ?? this.adminId,
       email: email ?? this.email,
       expiresAt: expiresAt ?? this.expiresAt,
+      permissions: permissions ?? this.permissions,
     );
   }
 }

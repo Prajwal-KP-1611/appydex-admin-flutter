@@ -6,7 +6,21 @@ Configure your reverse proxy (Nginx, Apache, or CDN) to send these security head
 
 ### Content Security Policy (CSP)
 ```
-Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://api.appydex.com; frame-ancestors 'none'; base-uri 'self'
+Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://api.appydex.com https://www.gstatic.com; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'
+```
+
+**Important Notes:**
+- `script-src` includes `'unsafe-inline'` for Flutter DevTools in development
+- `script-src` includes `https://www.gstatic.com` for Flutter CanvasKit
+- `connect-src` includes `https://www.gstatic.com` for CanvasKit WASM files
+- `worker-src 'self' blob:` needed for Flutter Web Workers
+- `frame-ancestors 'none'` can only be set via server headers (not meta tag)
+- Adjust `connect-src` to include your actual API domain
+
+**Production CSP (more restrictive):**
+For production builds, you can be more restrictive since DevTools won't be used:
+```
+Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://api.appydex.com https://www.gstatic.com; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'
 ```
 
 **Note:** Adjust `connect-src` to include your actual API domain (e.g., `https://api.appydex.com` or `https://api.appydex.co`).
@@ -43,7 +57,7 @@ server {
     ssl_certificate_key /path/to/key.pem;
 
     # Security headers
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://api.appydex.com; frame-ancestors 'none'; base-uri 'self'" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://api.appydex.com https://www.gstatic.com; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-Frame-Options "DENY" always;

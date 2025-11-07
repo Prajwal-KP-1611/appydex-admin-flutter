@@ -1,8 +1,135 @@
 # Backend API Requirements - Missing Endpoints
 
+**Last Updated**: 2025-11-07  
+**Status**: Frontend implementation complete for Payments & Reviews moderation
+
+## 🎯 Quick Status Summary
+
+### ✅ Frontend Ready (Awaiting Backend Implementation)
+- **Payments**: Refund + Invoice Download (2 endpoints)
+- **Reviews Moderation**: Full CRUD + 4 moderation actions (6 endpoints)
+- **Auth**: httpOnly cookie flow (3 endpoint updates)
+
+### ⏳ Not Yet Implemented (Frontend)
+- **Analytics Dashboard**: Top Searches, CTR, Export (3 endpoints)
+- **Advanced Reviews**: Vendor flags queue, bulk actions
+
+### 🔧 Configuration Needed
+- **CORS**: Add localhost support for development
+- **Idempotency**: Support Idempotency-Key header
+- **Permissions**: Return explicit permissions array in login response
+
+---
+
 This document lists all backend endpoints required by the admin FE that are either missing or need updates.
 
 ## Priority: CRITICAL (Blockers for Production)
+
+### 0. CORS Configuration (BLOCKING ALL API CALLS)
+
+**Status:** ⚠️ **PARTIAL** - Works for IP origins but not localhost  
+**Affected:** All API endpoints at `https://api.appydex.co`
+
+**Current Status:**
+- ✅ Backend CORS is configured and working
+- ✅ Allows requests from IP-based origins (e.g., `http://103.210.1.140:*`)
+- ❌ Does NOT allow requests from `localhost` origins
+- ❌ Does NOT allow requests from `127.0.0.1` origins
+
+**Workaround (Development):**
+Instead of accessing the app at `http://localhost:61101`, use your machine's IP address:
+```
+http://103.210.1.140:61101
+```
+
+**Current Backend CORS Configuration:**
+```bash
+# Test shows backend allows IP origins:
+curl -X OPTIONS "https://api.appydex.co/api/v1/admin/auth/request-otp" \
+  -H "Origin: http://103.210.1.140:37585" \
+  -H "Access-Control-Request-Method: POST"
+
+# Response:
+# ✅ access-control-allow-origin: http://103.210.1.140:37585
+# ✅ access-control-allow-credentials: true
+# ✅ access-control-allow-methods: DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT
+
+# But localhost fails:
+curl -X OPTIONS "https://api.appydex.co/api/v1/admin/auth/request-otp" \
+  -H "Origin: http://localhost:61101" \
+  -H "Access-Control-Request-Method: POST"
+
+# Response:
+# ❌ 400 Bad Request
+# ❌ No access-control-allow-origin header
+```
+
+**Recommended Backend Update (Optional):**
+
+To support standard `localhost` development, add localhost/127.0.0.1 to allowed origins:
+
+```python
+# FastAPI/Starlette example
+from fastapi.middleware.cors import CORSMiddleware
+import re
+
+# Use regex to match any IP and localhost origins
+origins_regex = r"^https?://(localhost|127\.0\.0\.1|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(:\d+)?$"
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origin_regex=origins_regex,
+    allow_origins=[
+        "https://admin.appydex.com",     # Production frontend
+        "https://admin.appydex.co",      # Alternative production domain
+    ],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=[
+        "Content-Type",
+        "Authorization",
+        "Idempotency-Key",
+        "X-Request-ID",
+    ],
+    expose_headers=[
+        "X-Request-ID",
+        "X-RateLimit-Limit",
+        "X-RateLimit-Remaining",
+        "X-RateLimit-Reset",
+    ],
+    max_age=600,
+)
+```
+```
+
+**Express/Node.js example (if applicable):**
+```javascript
+const cors = require('cors');
+
+app.use(cors({
+  origin: [
+    /^https?:\/\/localhost:\d+$/,           // Localhost any port
+    /^https?:\/\/127\.0\.0\.1:\d+$/,        // 127.0.0.1 any port
+    /^https?:\/\/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d+$/,  // Any IP
+    'https://admin.appydex.com',
+    'https://admin.appydex.co',
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Request-ID'],
+  exposedHeaders: ['X-Request-ID', 'X-RateLimit-Limit', 'X-RateLimit-Remaining'],
+  maxAge: 600,
+}));
+```
+
+**Impact:** 
+- ✅ Frontend works when accessed via IP address
+- ⚠️ Developers must use IP instead of `localhost` for API calls to work
+- 💡 Optional enhancement: Add localhost/127.0.0.1 support for standard development workflow
+
+**Priority:** � **LOW** (Workaround available) - Optional enhancement for developer convenience
+
+---
 
 ### 1. Idempotency Support on Mutating Endpoints
 
@@ -173,52 +300,192 @@ Response:
 
 ### 5. Payments & Invoices
 
-**Status:** Partial (refund missing)
+**Status:** ✅ FRONTEND READY - Endpoints implemented, awaiting backend
 
-#### 5.1 Refund Payment
+#### 5.1 Refund Payment ✅ Frontend Implemented
 ```
 POST /api/v1/admin/payments/{payment_id}/refund
 Headers:
-  Idempotency-Key: required
+  Idempotency-Key: required (auto-generated: payment_id + timestamp)
 Body:
 {
-  "amount": 1500.00,
-  "reason": "duplicate_charge|customer_request|error|other",
-  "notes": "Customer contacted support..."
+  "reason": "duplicate_charge|customer_request|error|other" (optional)
 }
 
 Response:
 {
-  "refund_id": "refund-uuid",
-  "payment_id": "payment-uuid",
-  "amount": 1500.00,
-  "status": "pending|succeeded|failed",
-  "created_at": "2025-11-07T10:30:00Z"
+  "id": "payment-uuid",
+  "status": "refunded",
+  "amount_cents": 1500,
+  "currency": "USD",
+  "refunded_at": "2025-11-07T10:30:00Z"
 }
+
+Frontend Implementation:
+- lib/repositories/payment_repo.dart::refundPayment()
+- lib/features/payments/payments_list_screen.dart (refund dialog)
+- Generates Idempotency-Key: `${payment_id}-${timestamp}`
+- Optional reason field with free-text input
 ```
 
-#### 5.2 Download Invoice
+#### 5.2 Download Invoice ✅ Frontend Implemented
 ```
 GET /api/v1/admin/payments/{payment_id}/invoice
 
 Response:
 {
-  "invoice_url": "https://cdn.../invoice-123.pdf",
+  "download_url": "https://cdn.../invoice-123.pdf",
   "expires_at": "2025-11-07T12:00:00Z"
 }
-```
 
-Or direct PDF download with appropriate headers.
+Frontend Implementation:
+- lib/repositories/payment_repo.dart::getInvoiceDownloadUrl()
+- lib/features/payments/payments_list_screen.dart (download button)
+- Shows URL in snackbar (could integrate url_launcher for direct download)
+```
 
 ---
 
 ### 6. Reviews Moderation & Takedown
 
-**Status:** Partial (missing flags, vendor requests, bulk actions)
+**Status:** ✅ FRONTEND READY - Core moderation implemented, advanced features pending
 
-#### 6.1 List Reviews with Flags
+#### 6.1 List Reviews with Filters ✅ Frontend Implemented
 ```
 GET /api/v1/admin/reviews
+Query params:
+  - skip, limit (pagination)
+  - status: pending|approved|hidden|removed
+  - flagged: true|false (optional)
+  - vendor_id (optional)
+
+Response:
+{
+  "items": [
+    {
+      "id": 123,
+      "vendor_id": 456,
+      "user_id": 789,
+      "rating": 4,
+      "comment": "Great service!",
+      "status": "approved",
+      "created_at": "2025-10-15T08:00:00Z",
+      "updated_at": "2025-10-20T10:00:00Z",
+      "vendor_name": "ABC Services",
+      "user_name": "John Doe",
+      "flag_reason": null,
+      "admin_notes": null
+    }
+  ],
+  "total": 123,
+  "skip": 0,
+  "limit": 100
+}
+
+Frontend Implementation:
+- lib/models/review.dart (complete model)
+- lib/repositories/reviews_repo.dart::list()
+- lib/features/reviews/reviews_list_screen.dart (full UI with filters)
+```
+
+#### 6.2 Get Review Detail ✅ Frontend Implemented
+```
+GET /api/v1/admin/reviews/{review_id}
+
+Response:
+{
+  "id": 123,
+  "vendor_id": 456,
+  "user_id": 789,
+  "rating": 4,
+  "comment": "Great service!",
+  "status": "approved",
+  "created_at": "2025-10-15T08:00:00Z",
+  "updated_at": "2025-10-20T10:00:00Z",
+  "vendor_name": "ABC Services",
+  "user_name": "John Doe",
+  "flag_reason": "spam",
+  "admin_notes": "Verified legitimate review"
+}
+
+Frontend Implementation:
+- lib/repositories/reviews_repo.dart::getById()
+```
+
+#### 6.3 Approve Review ✅ Frontend Implemented
+```
+POST /api/v1/admin/reviews/{review_id}/approve
+Body (optional):
+{
+  "admin_notes": "Verified with vendor"
+}
+
+Response:
+{
+  "id": 123,
+  "status": "approved",
+  "updated_at": "2025-11-07T10:30:00Z"
+}
+
+Frontend Implementation:
+- lib/repositories/reviews_repo.dart::approve()
+- Approve button in review card (green)
+```
+
+#### 6.4 Hide Review ✅ Frontend Implemented
+```
+POST /api/v1/admin/reviews/{review_id}/hide
+Body:
+{
+  "reason": "spam|abuse|inappropriate|other" (required)
+}
+
+Response:
+{
+  "id": 123,
+  "status": "hidden",
+  "updated_at": "2025-11-07T10:30:00Z"
+}
+
+Frontend Implementation:
+- lib/repositories/reviews_repo.dart::hide()
+- Hide button with reason dialog
+```
+
+#### 6.5 Restore Hidden Review ✅ Frontend Implemented
+```
+POST /api/v1/admin/reviews/{review_id}/restore
+
+Response:
+{
+  "id": 123,
+  "status": "approved",
+  "updated_at": "2025-11-07T10:30:00Z"
+}
+
+Frontend Implementation:
+- lib/repositories/reviews_repo.dart::restore()
+- Restore button (shown for hidden reviews)
+```
+
+#### 6.6 Remove Review Permanently ✅ Frontend Implemented
+```
+DELETE /api/v1/admin/reviews/{review_id}
+Body:
+{
+  "reason": "spam|abuse|illegal|other" (required)
+}
+
+Response: 204 No Content
+
+Frontend Implementation:
+- lib/repositories/reviews_repo.dart::remove()
+- Remove button with confirmation dialog (red, destructive)
+```
+
+#### 6.7 Vendor Flag Requests Queue ⏳ NOT YET IMPLEMENTED
+```
+GET /api/v1/admin/review-flags
 Query params:
   - page, page_size
   - status: published|hidden|removed
@@ -575,6 +842,10 @@ Response:
 
 ## Implementation Priority
 
+### Phase 0 (OPTIONAL - Developer Convenience)
+**💡 Nice to have but workaround exists:**
+0. **CORS Enhancement** - Add localhost/127.0.0.1 to allowed origins (currently works via IP address)
+
 ### Phase 1 (CRITICAL - Week 1)
 1. Idempotency support on all mutating endpoints
 2. Permissions array in auth responses
@@ -611,11 +882,12 @@ For each endpoint, backend must:
 
 ## Questions for Backend Team
 
-1. **Token Storage:** Can we move refresh token to httpOnly secure cookie? (Current: both tokens in memory/localStorage)
-2. **Permissions:** Can we get flat permissions array in login/refresh response?
-3. **Jobs:** What's the expected completion time for analytics exports? (Need for polling strategy)
-4. **Rate Limits:** What are the limits for vendor flag submissions? (Need to show in UI)
-5. **Audit:** Are all moderation actions automatically audited, or do we need separate endpoint?
+1. **� CORS Enhancement (Optional):** Would you like to add `localhost`/`127.0.0.1` to allowed origins for developer convenience? Currently works fine with IP addresses. (See section 0 above for suggested config)
+2. **Token Storage:** Can we move refresh token to httpOnly secure cookie? (Current: both tokens in memory/localStorage)
+3. **Permissions:** Can we get flat permissions array in login/refresh response?
+4. **Jobs:** What's the expected completion time for analytics exports? (Need for polling strategy)
+5. **Rate Limits:** What are the limits for vendor flag submissions? (Need to show in UI)
+6. **Audit:** Are all moderation actions automatically audited, or do we need separate endpoint?
 
 ---
 

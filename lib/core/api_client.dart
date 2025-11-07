@@ -379,6 +379,7 @@ class ApiClient {
     debugPrint('Response Data: ${error.response?.data}');
     debugPrint('Response Headers: ${error.response?.headers}');
 
+    // Handle 401 (Unauthorized) - single refresh then logout
     if (_shouldAttemptRefresh(error)) {
       try {
         final refreshed = await _refreshTokens();
@@ -390,6 +391,31 @@ class ApiClient {
       } catch (_) {
         // Propagate failure so diagnostics can surface it.
       }
+    }
+
+    // Handle 403 (Forbidden) - log and show user-friendly message
+    if (error.response?.statusCode == 403) {
+      debugPrint('[ApiClient] 403 Forbidden: Access denied');
+      // Toast will be shown by UI layer via AppHttpException
+    }
+
+    // Handle 422 (Unprocessable Entity) - validation errors
+    if (error.response?.statusCode == 422) {
+      debugPrint('[ApiClient] 422 Validation error: ${error.response?.data}');
+      // Validation details extracted in _wrapError for inline field errors
+    }
+
+    // Handle 429 (Rate Limited) - log and suggest backoff
+    if (error.response?.statusCode == 429) {
+      debugPrint('[ApiClient] 429 Rate limited: Too many requests');
+      // UI should briefly disable actions and retry with backoff
+    }
+
+    // Handle 5xx (Server Error) - log and allow component-level retry
+    if (error.response?.statusCode != null &&
+        error.response!.statusCode! >= 500) {
+      debugPrint('[ApiClient] ${error.response!.statusCode} Server error');
+      // Component can show retry button
     }
 
     _captureFailure(error, traceId);
@@ -565,7 +591,31 @@ class ApiClient {
   }
 
   String _inferErrorMessage(DioException error) {
+    final statusCode = error.response?.statusCode;
     final data = error.response?.data;
+
+    // Standardized messages for common HTTP status codes
+    if (statusCode == 401) {
+      return 'Session expired. Please log in again.';
+    }
+    if (statusCode == 403) {
+      return 'Access denied. You do not have permission to perform this action.';
+    }
+    if (statusCode == 422) {
+      // Extract validation message if available
+      if (data is Map<String, dynamic> && data['detail'] is String) {
+        return data['detail'] as String;
+      }
+      return 'Invalid data submitted. Please check your inputs.';
+    }
+    if (statusCode == 429) {
+      return 'Too many requests. Please wait a moment and try again.';
+    }
+    if (statusCode != null && statusCode >= 500) {
+      return 'Server error. Please try again in a moment.';
+    }
+
+    // Extract message from response data
     if (data is Map<String, dynamic>) {
       if (data['detail'] is String) {
         return data['detail'] as String;
@@ -574,9 +624,12 @@ class ApiClient {
         return data['message'] as String;
       }
     }
+    
+    // Fallback to DioException message
     if (error.message != null && error.message!.isNotEmpty) {
       return error.message!;
     }
+    
     return 'Something went wrong. Please try again.';
   }
 

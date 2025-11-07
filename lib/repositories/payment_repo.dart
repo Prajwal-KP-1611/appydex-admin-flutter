@@ -58,6 +58,65 @@ class PaymentRepository {
       rethrow;
     }
   }
+
+  /// Refund a payment
+  /// POST /api/v1/admin/payments/{payment_id}/refund
+  /// 
+  /// Requires Idempotency-Key header to prevent duplicate refunds.
+  /// Backend should return 200 if already refunded with same key.
+  Future<PaymentIntent> refundPayment({
+    required String paymentId,
+    required String idempotencyKey,
+    String? reason,
+  }) async {
+    try {
+      final response = await _client.requestAdmin<Map<String, dynamic>>(
+        '/admin/payments/$paymentId/refund',
+        method: 'POST',
+        data: {
+          if (reason != null && reason.isNotEmpty) 'reason': reason,
+        },
+        options: Options(
+          headers: {
+            'Idempotency-Key': idempotencyKey,
+          },
+        ),
+      );
+      return PaymentIntent.fromJson(response.data ?? const {});
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw AdminEndpointMissing('admin/payments/:id/refund');
+      }
+      if (error.response?.statusCode == 400) {
+        final message = error.response?.data['detail'] as String? ?? 
+                        'Invalid refund request';
+        throw AdminValidationError(message);
+      }
+      rethrow;
+    }
+  }
+
+  /// Get invoice download URL
+  /// GET /api/v1/admin/payments/{payment_id}/invoice
+  /// 
+  /// Returns a pre-signed URL or direct PDF download.
+  Future<String> getInvoiceDownloadUrl(String paymentId) async {
+    try {
+      final response = await _client.requestAdmin<Map<String, dynamic>>(
+        '/admin/payments/$paymentId/invoice',
+      );
+      final downloadUrl = response.data?['download_url'] as String?;
+      if (downloadUrl == null || downloadUrl.isEmpty) {
+        throw Exception('Invoice URL not available');
+      }
+      return downloadUrl;
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw AdminEndpointMissing('admin/payments/:id/invoice');
+      }
+      rethrow;
+    }
+  }
 }
 
 /// Provider for PaymentRepository

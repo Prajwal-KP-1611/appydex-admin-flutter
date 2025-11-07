@@ -413,6 +413,12 @@ class _AdminNavItem {
 const _allNavItems = [
   _AdminNavItem(AppRoute.dashboard, 'Dashboard', Icons.dashboard_outlined),
   _AdminNavItem(
+    AppRoute.analytics,
+    'Analytics',
+    Icons.analytics_outlined,
+    section: 'management', // grouped under management for now
+  ),
+  _AdminNavItem(
     AppRoute.admins,
     'Admin Users',
     Icons.admin_panel_settings_outlined,

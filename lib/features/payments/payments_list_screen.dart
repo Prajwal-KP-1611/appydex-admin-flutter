@@ -490,13 +490,25 @@ class _StatusChip extends StatelessWidget {
   }
 }
 
-class _PaymentDetailsDialog extends StatelessWidget {
+class _PaymentDetailsDialog extends ConsumerStatefulWidget {
   const _PaymentDetailsDialog({required this.payment});
 
   final PaymentIntent payment;
 
   @override
+  ConsumerState<_PaymentDetailsDialog> createState() =>
+      _PaymentDetailsDialogState();
+}
+
+class _PaymentDetailsDialogState extends ConsumerState<_PaymentDetailsDialog> {
+  bool _isRefunding = false;
+  bool _isDownloadingInvoice = false;
+
+  @override
   Widget build(BuildContext context) {
+    final payment = widget.payment;
+    final canRefund = payment.isSucceeded;
+
     return AlertDialog(
       title: const Row(
         children: [
@@ -530,6 +542,40 @@ class _PaymentDetailsDialog extends StatelessWidget {
         ),
       ),
       actions: [
+        // Invoice download button
+        if (payment.isSucceeded)
+          TextButton.icon(
+            onPressed: _isDownloadingInvoice ? null : _downloadInvoice,
+            icon: _isDownloadingInvoice
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.receipt_long),
+            label: const Text('Download Invoice'),
+          ),
+        
+        // Refund button
+        if (canRefund)
+          FilledButton.icon(
+            onPressed: _isRefunding ? null : _showRefundDialog,
+            icon: _isRefunding
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.undo),
+            label: const Text('Refund'),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.warningAmber,
+            ),
+          ),
+        
         TextButton(
           onPressed: () => Navigator.pop(context),
           child: const Text('Close'),
@@ -538,8 +584,155 @@ class _PaymentDetailsDialog extends StatelessWidget {
     );
   }
 
+  Future<void> _downloadInvoice() async {
+    setState(() => _isDownloadingInvoice = true);
+
+    try {
+      final repo = ref.read(paymentRepositoryProvider);
+      final url = await repo.getInvoiceDownloadUrl(widget.payment.id);
+
+      if (mounted) {
+        // Open URL in new tab (web) or download (mobile)
+        // For web, we can use dart:html or url_launcher
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Invoice URL: $url'),
+            action: SnackBarAction(
+              label: 'Copy',
+              onPressed: () {
+                // TODO: Copy to clipboard
+              },
+            ),
+          ),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to get invoice: $error'),
+            backgroundColor: AppTheme.dangerRed,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isDownloadingInvoice = false);
+      }
+    }
+  }
+
+  Future<void> _showRefundDialog() async {
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (context) => _RefundReasonDialog(),
+    );
+
+    if (reason == null || !mounted) return;
+
+    setState(() => _isRefunding = true);
+
+    try {
+      final repo = ref.read(paymentRepositoryProvider);
+      
+      // Generate idempotency key from payment ID + timestamp
+      final idempotencyKey = '${widget.payment.id}-${DateTime.now().millisecondsSinceEpoch}';
+      
+      await repo.refundPayment(
+        paymentId: widget.payment.id,
+        idempotencyKey: idempotencyKey,
+        reason: reason,
+      );
+
+      if (mounted) {
+        // Refresh payments list
+        ref.invalidate(paymentsProvider);
+        
+        Navigator.pop(context);
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Payment refunded successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Refund failed: $error'),
+            backgroundColor: AppTheme.dangerRed,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isRefunding = false);
+      }
+    }
+  }
+
   String _formatDateTime(DateTime date) {
     return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+  }
+}
+
+class _RefundReasonDialog extends StatefulWidget {
+  @override
+  State<_RefundReasonDialog> createState() => _RefundReasonDialogState();
+}
+
+class _RefundReasonDialogState extends State<_RefundReasonDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Refund Payment'),
+      content: SizedBox(
+        width: 400,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Are you sure you want to refund this payment? This action cannot be undone.',
+              style: TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _controller,
+              decoration: const InputDecoration(
+                labelText: 'Reason (optional)',
+                hintText: 'e.g., Customer request, Duplicate charge',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, _controller.text.trim()),
+          style: FilledButton.styleFrom(
+            backgroundColor: AppTheme.warningAmber,
+          ),
+          child: const Text('Refund'),
+        ),
+      ],
+    );
   }
 }
 
