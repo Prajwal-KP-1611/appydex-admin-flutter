@@ -27,6 +27,13 @@ class EndUser {
     this.bookingCount,
     this.createdAt,
     this.lastLoginAt,
+    this.lastActivityAt,
+    this.trustScore,
+    this.totalBookings,
+    this.totalSpent,
+    this.accountStatus,
+    this.suspendedUntil,
+    this.openDisputes,
   });
 
   final int id;
@@ -40,6 +47,13 @@ class EndUser {
   final int? bookingCount;
   final DateTime? createdAt;
   final DateTime? lastLoginAt;
+  final DateTime? lastActivityAt;
+  final int? trustScore; // 0-100
+  final int? totalBookings;
+  final int? totalSpent; // in paise
+  final String? accountStatus; // active|suspended|inactive
+  final DateTime? suspendedUntil;
+  final int? openDisputes;
 
   factory EndUser.fromJson(Map<String, dynamic> json) {
     return EndUser(
@@ -51,13 +65,24 @@ class EndUser {
       isSuspended: json['is_suspended'] as bool? ?? false,
       emailVerified: json['email_verified'] as bool? ?? false,
       phoneVerified: json['phone_verified'] as bool? ?? false,
-      bookingCount: json['booking_count'] as int?,
+      bookingCount: json['booking_count'] as int? ?? json['total_bookings'] as int?,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'] as String)
           : null,
       lastLoginAt: json['last_login_at'] != null
           ? DateTime.tryParse(json['last_login_at'] as String)
           : null,
+      lastActivityAt: json['last_activity_at'] != null
+          ? DateTime.tryParse(json['last_activity_at'] as String)
+          : null,
+      trustScore: json['trust_score'] as int?,
+      totalBookings: json['total_bookings'] as int?,
+      totalSpent: json['total_spent'] as int?,
+      accountStatus: json['account_status'] as String?,
+      suspendedUntil: json['suspended_until'] != null
+          ? DateTime.tryParse(json['suspended_until'] as String)
+          : null,
+      openDisputes: json['open_disputes'] as int?,
     );
   }
 
@@ -74,6 +99,13 @@ class EndUser {
       if (bookingCount != null) 'booking_count': bookingCount,
       if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
       if (lastLoginAt != null) 'last_login_at': lastLoginAt!.toIso8601String(),
+      if (lastActivityAt != null) 'last_activity_at': lastActivityAt!.toIso8601String(),
+      if (trustScore != null) 'trust_score': trustScore,
+      if (totalBookings != null) 'total_bookings': totalBookings,
+      if (totalSpent != null) 'total_spent': totalSpent,
+      if (accountStatus != null) 'account_status': accountStatus,
+      if (suspendedUntil != null) 'suspended_until': suspendedUntil!.toIso8601String(),
+      if (openDisputes != null) 'open_disputes': openDisputes,
     };
   }
 
@@ -89,6 +121,13 @@ class EndUser {
     int? bookingCount,
     DateTime? createdAt,
     DateTime? lastLoginAt,
+    DateTime? lastActivityAt,
+    int? trustScore,
+    int? totalBookings,
+    int? totalSpent,
+    String? accountStatus,
+    DateTime? suspendedUntil,
+    int? openDisputes,
   }) {
     return EndUser(
       id: id ?? this.id,
@@ -102,6 +141,13 @@ class EndUser {
       bookingCount: bookingCount ?? this.bookingCount,
       createdAt: createdAt ?? this.createdAt,
       lastLoginAt: lastLoginAt ?? this.lastLoginAt,
+      lastActivityAt: lastActivityAt ?? this.lastActivityAt,
+      trustScore: trustScore ?? this.trustScore,
+      totalBookings: totalBookings ?? this.totalBookings,
+      totalSpent: totalSpent ?? this.totalSpent,
+      accountStatus: accountStatus ?? this.accountStatus,
+      suspendedUntil: suspendedUntil ?? this.suspendedUntil,
+      openDisputes: openDisputes ?? this.openDisputes,
     );
   }
 }
