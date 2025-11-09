@@ -50,7 +50,7 @@ class _VendorBookingsTabState extends ConsumerState<VendorBookingsTab> {
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<String>(
-                      value: _statusFilter,
+                      initialValue: _statusFilter,
                       decoration: const InputDecoration(
                         labelText: 'Status',
                         border: OutlineInputBorder(),
@@ -82,7 +82,7 @@ class _VendorBookingsTabState extends ConsumerState<VendorBookingsTab> {
                   const SizedBox(width: 16),
                   Expanded(
                     child: DropdownButtonFormField<String>(
-                      value: _sort,
+                      initialValue: _sort,
                       decoration: const InputDecoration(
                         labelText: 'Sort By',
                         border: OutlineInputBorder(),

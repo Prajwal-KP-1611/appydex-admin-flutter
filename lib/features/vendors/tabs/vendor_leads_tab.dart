@@ -39,7 +39,7 @@ class _VendorLeadsTabState extends ConsumerState<VendorLeadsTab> {
           padding: const EdgeInsets.all(16),
           color: Colors.grey[100],
           child: DropdownButtonFormField<String>(
-            value: _statusFilter,
+            initialValue: _statusFilter,
             decoration: const InputDecoration(
               labelText: 'Status',
               border: OutlineInputBorder(),

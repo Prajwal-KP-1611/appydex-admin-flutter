@@ -383,6 +383,20 @@ class _VendorsListScreenState extends ConsumerState<VendorsListScreen> {
                                         );
                                       }
                                     : null,
+                                onSuspend: vendor.status == 'verified'
+                                    ? () => _confirmSuspendVendor(
+                                        context,
+                                        notifier,
+                                        vendor,
+                                      )
+                                    : null,
+                                onReactivate: vendor.status == 'suspended'
+                                    ? () => _confirmReactivateVendor(
+                                        context,
+                                        notifier,
+                                        vendor,
+                                      )
+                                    : null,
                                 onExport: () {
                                   final csv = toCsv([
                                     {
@@ -436,6 +450,215 @@ class _VendorsListScreenState extends ConsumerState<VendorsListScreen> {
     );
   }
 
+  Future<void> _confirmSuspendVendor(
+    BuildContext context,
+    VendorsNotifier notifier,
+    Vendor vendor,
+  ) async {
+    final reasonController = TextEditingController();
+    final durationController = TextEditingController(text: '30');
+    final formKey = GlobalKey<FormState>();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Suspend ${vendor.companyName}'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Suspending this vendor will:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              const Text('• Block new bookings'),
+              const Text('• Hide services from customers'),
+              const Text('• Restrict dashboard access'),
+              const Text('• Preserve existing bookings'),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: reasonController,
+                decoration: const InputDecoration(
+                  labelText: 'Reason for suspension *',
+                  hintText: 'Enter reason (minimum 10 characters)',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 3,
+                maxLength: 500,
+                validator: (value) {
+                  if (value == null || value.trim().length < 10) {
+                    return 'Reason must be at least 10 characters';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: durationController,
+                decoration: const InputDecoration(
+                  labelText: 'Duration (days)',
+                  hintText: 'Leave empty for indefinite',
+                  border: OutlineInputBorder(),
+                  suffixText: 'days',
+                ),
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value != null && value.isNotEmpty) {
+                    final days = int.tryParse(value);
+                    if (days == null || days < 1) {
+                      return 'Must be a positive number';
+                    }
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                Navigator.of(context).pop(true);
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Suspend Vendor'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    try {
+      final reason = reasonController.text.trim();
+      final durationText = durationController.text.trim();
+      final durationDays = durationText.isNotEmpty
+          ? int.tryParse(durationText)
+          : null;
+
+      await notifier.suspendVendor(
+        vendor.id,
+        reason: reason,
+        durationDays: durationDays,
+      );
+
+      if (!context.mounted) return;
+      final lastTraceId = ref.read(lastTraceIdProvider);
+      ScaffoldMessenger.of(context).showSnackBar(
+        buildTraceSnackbar(
+          'Vendor suspended successfully',
+          traceId: lastTraceId,
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to suspend vendor: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      reasonController.dispose();
+      durationController.dispose();
+    }
+  }
+
+  Future<void> _confirmReactivateVendor(
+    BuildContext context,
+    VendorsNotifier notifier,
+    Vendor vendor,
+  ) async {
+    final notesController = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Reactivate ${vendor.companyName}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Reactivating this vendor will restore:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text('• Ability to accept new bookings'),
+            const Text('• Service listings visibility'),
+            const Text('• Full dashboard access'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: notesController,
+              decoration: const InputDecoration(
+                labelText: 'Notes (optional)',
+                hintText: 'Add any notes about reactivation',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+              maxLength: 500,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Reactivate Vendor'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    try {
+      final notes = notesController.text.trim();
+      await notifier.reactivateVendor(
+        vendor.id,
+        notes: notes.isNotEmpty ? notes : null,
+      );
+
+      if (!context.mounted) return;
+      final lastTraceId = ref.read(lastTraceIdProvider);
+      ScaffoldMessenger.of(context).showSnackBar(
+        buildTraceSnackbar(
+          'Vendor reactivated successfully',
+          traceId: lastTraceId,
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to reactivate vendor: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      notesController.dispose();
+    }
+  }
+
   void _showBackendTodo(BuildContext context) {
     showDialog(
       context: context,
@@ -487,24 +710,41 @@ class _VendorActions extends StatelessWidget {
     required this.onExport,
     this.onVerify,
     this.onReject,
+    this.onSuspend,
+    this.onReactivate,
   });
 
   final Vendor vendor;
   final VoidCallback onView;
   final VoidCallback? onVerify;
   final VoidCallback? onReject;
+  final VoidCallback? onSuspend;
+  final VoidCallback? onReactivate;
   final VoidCallback onExport;
 
   @override
   Widget build(BuildContext context) {
     return Wrap(
       spacing: 8,
+      runSpacing: 4,
       children: [
         TextButton(onPressed: onView, child: const Text('Detail')),
         if (onVerify != null)
           TextButton(onPressed: onVerify, child: const Text('Verify')),
         if (onReject != null)
           TextButton(onPressed: onReject, child: const Text('Reject')),
+        if (onSuspend != null)
+          TextButton(
+            onPressed: onSuspend,
+            style: TextButton.styleFrom(foregroundColor: Colors.orange),
+            child: const Text('Suspend'),
+          ),
+        if (onReactivate != null)
+          TextButton(
+            onPressed: onReactivate,
+            style: TextButton.styleFrom(foregroundColor: Colors.green),
+            child: const Text('Reactivate'),
+          ),
         IconButton(
           tooltip: 'Export vendor CSV',
           onPressed: onExport,
@@ -521,6 +761,8 @@ Color _statusColor(ThemeData theme, String status) {
       return Colors.green;
     case 'rejected':
       return theme.colorScheme.error;
+    case 'suspended':
+      return Colors.orange;
     case 'onboarding':
       return Colors.blue; // Blue for onboarding status
     case 'pending':

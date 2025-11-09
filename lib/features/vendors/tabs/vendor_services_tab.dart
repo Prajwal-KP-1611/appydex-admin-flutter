@@ -41,7 +41,7 @@ class _VendorServicesTabState extends ConsumerState<VendorServicesTab> {
             children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: _statusFilter,
+                  initialValue: _statusFilter,
                   decoration: const InputDecoration(
                     labelText: 'Status',
                     border: OutlineInputBorder(),

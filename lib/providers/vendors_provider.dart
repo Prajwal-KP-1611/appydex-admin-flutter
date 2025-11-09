@@ -170,6 +170,20 @@ class VendorsNotifier extends StateNotifier<VendorsState> {
     await _executeMutation(() => _repo.reject(id, reason: reason));
   }
 
+  Future<void> suspendVendor(
+    int id, {
+    required String reason,
+    int? durationDays,
+  }) async {
+    await _executeMutation(
+      () => _repo.suspend(id, reason: reason, durationDays: durationDays),
+    );
+  }
+
+  Future<void> reactivateVendor(int id, {String? notes}) async {
+    await _executeMutation(() => _repo.reactivate(id, notes: notes));
+  }
+
   Future<void> useMockData() async {
     await load(forceMock: true);
   }

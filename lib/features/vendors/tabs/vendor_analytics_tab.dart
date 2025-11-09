@@ -399,7 +399,8 @@ class _VendorAnalyticsTabState extends ConsumerState<VendorAnalyticsTab> {
               child: _buildMetricCard(
                 'Avg Views per Service',
                 metrics.totalViews != null && metrics.activeServices > 0
-                    ? '${(metrics.totalViews! / metrics.activeServices).toStringAsFixed(0)}'
+                    ? (metrics.totalViews! / metrics.activeServices)
+                          .toStringAsFixed(0)
                     : '-',
                 Icons.bar_chart,
                 Colors.orange,

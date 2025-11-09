@@ -346,6 +346,74 @@ class VendorRepository {
       rethrow;
     }
   }
+
+  // ==================== VENDOR SUSPENSION MANAGEMENT ====================
+
+  /// Suspend vendor account
+  /// POST /api/v1/admin/vendors/{vendor_id}/suspend
+  ///
+  /// Temporarily blocks vendor from:
+  /// - Accepting new bookings
+  /// - Listing services
+  /// - Accessing vendor dashboard
+  ///
+  /// Existing bookings remain active for customer protection.
+  Future<VendorSuspensionResult> suspend(
+    int vendorId, {
+    required String reason,
+    int? durationDays,
+    bool notifyVendor = true,
+    String? internalNotes,
+  }) async {
+    try {
+      final response = await _client.requestAdmin<Map<String, dynamic>>(
+        '/admin/vendors/$vendorId/suspend',
+        method: 'POST',
+        data: {
+          'reason': reason,
+          if (durationDays != null) 'duration_days': durationDays,
+          'notify_vendor': notifyVendor,
+          if (internalNotes != null && internalNotes.isNotEmpty)
+            'internal_notes': internalNotes,
+        },
+        options: idempotentOptions(),
+      );
+      return VendorSuspensionResult.fromJson(response.data ?? {});
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw AdminEndpointMissing('admin/vendors/:id/suspend');
+      }
+      rethrow;
+    }
+  }
+
+  /// Reactivate suspended vendor account
+  /// POST /api/v1/admin/vendors/{vendor_id}/reactivate
+  ///
+  /// Restores full vendor access and functionality.
+  Future<VendorReactivationResult> reactivate(
+    int vendorId, {
+    String? notes,
+    bool notifyVendor = true,
+  }) async {
+    try {
+      final response = await _client.requestAdmin<Map<String, dynamic>>(
+        '/admin/vendors/$vendorId/reactivate',
+        method: 'POST',
+        data: {
+          if (notes != null && notes.isNotEmpty) 'notes': notes,
+          'notify_vendor': notifyVendor,
+        },
+        options: idempotentOptions(),
+      );
+      return VendorReactivationResult.fromJson(response.data ?? {});
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw AdminEndpointMissing('admin/vendors/:id/reactivate');
+      }
+      rethrow;
+    }
+  }
 }
 
 // Helper result classes for methods that return multiple values
@@ -390,6 +458,69 @@ class VendorStatusChangeResult {
       verifiedBy: json['verified_by'] as int?,
       verifiedAt: json['verified_at'] != null
           ? DateTime.tryParse(json['verified_at'] as String)
+          : null,
+      notes: json['notes'] as String?,
+    );
+  }
+}
+
+/// Result of vendor suspension operation
+class VendorSuspensionResult {
+  const VendorSuspensionResult({
+    required this.vendorId,
+    required this.status,
+    this.suspendedUntil,
+    this.reason,
+    this.suspendedBy,
+    this.suspendedAt,
+  });
+
+  final int vendorId;
+  final String status; // "suspended"
+  final DateTime? suspendedUntil;
+  final String? reason;
+  final int? suspendedBy;
+  final DateTime? suspendedAt;
+
+  factory VendorSuspensionResult.fromJson(Map<String, dynamic> json) {
+    return VendorSuspensionResult(
+      vendorId: json['vendor_id'] as int? ?? 0,
+      status: json['status'] as String? ?? 'suspended',
+      suspendedUntil: json['suspended_until'] != null
+          ? DateTime.tryParse(json['suspended_until'] as String)
+          : null,
+      reason: json['reason'] as String?,
+      suspendedBy: json['suspended_by'] as int?,
+      suspendedAt: json['suspended_at'] != null
+          ? DateTime.tryParse(json['suspended_at'] as String)
+          : null,
+    );
+  }
+}
+
+/// Result of vendor reactivation operation
+class VendorReactivationResult {
+  const VendorReactivationResult({
+    required this.vendorId,
+    required this.status,
+    this.reactivatedBy,
+    this.reactivatedAt,
+    this.notes,
+  });
+
+  final int vendorId;
+  final String status; // "active" or "verified"
+  final int? reactivatedBy;
+  final DateTime? reactivatedAt;
+  final String? notes;
+
+  factory VendorReactivationResult.fromJson(Map<String, dynamic> json) {
+    return VendorReactivationResult(
+      vendorId: json['vendor_id'] as int? ?? 0,
+      status: json['status'] as String? ?? 'active',
+      reactivatedBy: json['reactivated_by'] as int?,
+      reactivatedAt: json['reactivated_at'] != null
+          ? DateTime.tryParse(json['reactivated_at'] as String)
           : null,
       notes: json['notes'] as String?,
     );

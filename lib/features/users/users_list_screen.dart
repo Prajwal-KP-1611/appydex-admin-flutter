@@ -652,7 +652,7 @@ class _UsersListScreenState extends ConsumerState<UsersListScreen> {
   Widget _buildStatusChip(String status) {
     Color color;
     IconData? icon;
-    
+
     switch (status.toLowerCase()) {
       case 'active':
         color = Colors.green;
