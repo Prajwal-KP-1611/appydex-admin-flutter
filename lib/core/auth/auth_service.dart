@@ -62,9 +62,17 @@ class AuthService {
   final TokenStorage _tokenStorage;
   final FlutterSecureStorage _storage;
 
-  /// Login with email and password
+  /// Login with email or phone and password
+  ///
+  /// The [email] parameter accepts either an email address or phone number.
+  /// Backend automatically detects whether it's an email (contains @) or phone number.
+  ///
+  /// Example:
+  /// - Email: `admin@example.com`
+  /// - Phone: `+1234567890`
   Future<AdminSession> login({
-    required String email,
+    required String
+    email, // Accepts both email and phone for backward compatibility
     required String password,
     String otp = '000000',
   }) async {

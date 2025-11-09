@@ -65,7 +65,8 @@ class EndUser {
       isSuspended: json['is_suspended'] as bool? ?? false,
       emailVerified: json['email_verified'] as bool? ?? false,
       phoneVerified: json['phone_verified'] as bool? ?? false,
-      bookingCount: json['booking_count'] as int? ?? json['total_bookings'] as int?,
+      bookingCount:
+          json['booking_count'] as int? ?? json['total_bookings'] as int?,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'] as String)
           : null,
@@ -99,12 +100,14 @@ class EndUser {
       if (bookingCount != null) 'booking_count': bookingCount,
       if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
       if (lastLoginAt != null) 'last_login_at': lastLoginAt!.toIso8601String(),
-      if (lastActivityAt != null) 'last_activity_at': lastActivityAt!.toIso8601String(),
+      if (lastActivityAt != null)
+        'last_activity_at': lastActivityAt!.toIso8601String(),
       if (trustScore != null) 'trust_score': trustScore,
       if (totalBookings != null) 'total_bookings': totalBookings,
       if (totalSpent != null) 'total_spent': totalSpent,
       if (accountStatus != null) 'account_status': accountStatus,
-      if (suspendedUntil != null) 'suspended_until': suspendedUntil!.toIso8601String(),
+      if (suspendedUntil != null)
+        'suspended_until': suspendedUntil!.toIso8601String(),
       if (openDisputes != null) 'open_disputes': openDisputes,
     };
   }
@@ -710,6 +713,85 @@ class EndUsersRepository {
         'score': score,
         'reason': reason,
         'apply_restrictions': applyRestrictions,
+      },
+      options: idempotencyKey != null
+          ? Options(headers: {'Idempotency-Key': idempotencyKey})
+          : null,
+    );
+
+    return response.data ?? {};
+  }
+
+  // ============================================================================
+  // USER DELETION & RESTORE (November 2025)
+  // ============================================================================
+
+  /// Delete user with specified deletion type
+  /// DELETE /api/v1/admin/users/{user_id}
+  ///
+  /// Deletion types:
+  /// - 'soft': Suspends account (reversible via restore)
+  /// - 'anonymize': GDPR-compliant data anonymization (irreversible)
+  /// - 'hard': Permanent deletion (only for test data < 7 days old)
+  ///
+  /// Returns deletion details including:
+  /// - deletion_type: Type of deletion performed
+  /// - soft_deleted: Whether user can be restored
+  /// - bookings_affected: Number of bookings impacted
+  /// - payments_affected: Number of payments impacted
+  /// - anonymized_fields: List of fields anonymized (for 'anonymize' type)
+  Future<Map<String, dynamic>> deleteUser(
+    int userId, {
+    required String deletionType,
+    required String reason,
+    String? idempotencyKey,
+  }) async {
+    // Validate deletion type
+    if (!['soft', 'anonymize', 'hard'].contains(deletionType)) {
+      throw ArgumentError(
+        'Invalid deletion_type. Must be: soft, anonymize, or hard',
+      );
+    }
+
+    // Validate reason (min 10 characters)
+    if (reason.trim().length < 10) {
+      throw ArgumentError('Reason must be at least 10 characters');
+    }
+
+    final response = await _apiClient.requestAdmin<Map<String, dynamic>>(
+      '/admin/users/$userId',
+      method: 'DELETE',
+      data: {'deletion_type': deletionType, 'reason': reason},
+      options: idempotencyKey != null
+          ? Options(headers: {'Idempotency-Key': idempotencyKey})
+          : null,
+    );
+
+    return response.data ?? {};
+  }
+
+  /// Restore soft-deleted user
+  /// POST /api/v1/admin/users/{user_id}/restore
+  ///
+  /// Only works for soft-deleted users (deletion_type: 'soft').
+  /// Anonymized or hard-deleted users cannot be restored.
+  ///
+  /// Returns restoration details including:
+  /// - user_id: ID of restored user
+  /// - restored_at: Timestamp of restoration
+  /// - previous_status: User's status before deletion
+  Future<Map<String, dynamic>> restoreUser(
+    int userId, {
+    String? notes,
+    bool notifyUser = false,
+    String? idempotencyKey,
+  }) async {
+    final response = await _apiClient.requestAdmin<Map<String, dynamic>>(
+      '/admin/users/$userId/restore',
+      method: 'POST',
+      data: {
+        if (notes != null && notes.isNotEmpty) 'notes': notes,
+        'notify_user': notifyUser,
       },
       options: idempotencyKey != null
           ? Options(headers: {'Idempotency-Key': idempotencyKey})

@@ -8,6 +8,8 @@ import '../../features/shared/admin_sidebar.dart';
 import '../../repositories/admin_exceptions.dart';
 import '../../repositories/end_users_repo.dart';
 import '../../routes.dart';
+import '../../widgets/delete_user_dialog.dart';
+import '../../widgets/status_chip.dart';
 import 'user_detail_screen.dart';
 
 /// End-users (customers) management screen
@@ -336,66 +338,180 @@ class _UsersListScreenState extends ConsumerState<UsersListScreen> {
                       return Column(
                         children: [
                           Expanded(
-                            child: ListView.separated(
-                              itemCount: items.length,
-                              separatorBuilder: (_, __) =>
-                                  const Divider(height: 1),
-                              itemBuilder: (context, idx) {
-                                final user = items[idx];
-                                final created = user.createdAt != null
-                                    ? DateFormat.yMMMd().add_Hm().format(
-                                        user.createdAt!,
-                                      )
-                                    : '—';
-
-                                return ListTile(
-                                  onTap: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            UserDetailScreen(userId: user.id),
-                                      ),
+                            child: Card(
+                              child: SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: DataTable(
+                                  columnSpacing: 24,
+                                  headingRowColor: WidgetStateProperty.all(
+                                    Theme.of(
+                                      context,
+                                    ).colorScheme.surfaceContainerHighest,
+                                  ),
+                                  columns: const [
+                                    DataColumn(label: Text('Email')),
+                                    DataColumn(label: Text('Name')),
+                                    DataColumn(label: Text('Status')),
+                                    DataColumn(label: Text('Trust Score')),
+                                    DataColumn(label: Text('Bookings')),
+                                    DataColumn(label: Text('Total Spent')),
+                                    DataColumn(label: Text('Disputes')),
+                                    DataColumn(label: Text('Last Active')),
+                                    DataColumn(label: Text('Created')),
+                                    DataColumn(label: Text('Actions')),
+                                  ],
+                                  rows: items.map((user) {
+                                    return DataRow(
+                                      cells: [
+                                        DataCell(
+                                          InkWell(
+                                            onTap: () {
+                                              Navigator.of(context).push(
+                                                MaterialPageRoute(
+                                                  builder: (_) =>
+                                                      UserDetailScreen(
+                                                        userId: user.id,
+                                                      ),
+                                                ),
+                                              );
+                                            },
+                                            child: Text(
+                                              user.email,
+                                              style: const TextStyle(
+                                                color: Colors.blue,
+                                                decoration:
+                                                    TextDecoration.underline,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        DataCell(
+                                          Text(
+                                            user.name ?? '—',
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        DataCell(
+                                          _buildStatusChip(
+                                            user.accountStatus ?? 'active',
+                                          ),
+                                        ),
+                                        DataCell(
+                                          _buildTrustScoreChip(user.trustScore),
+                                        ),
+                                        DataCell(
+                                          Text(
+                                            '${user.totalBookings ?? user.bookingCount ?? 0}',
+                                          ),
+                                        ),
+                                        DataCell(
+                                          Text(
+                                            _formatCurrency(user.totalSpent),
+                                          ),
+                                        ),
+                                        DataCell(
+                                          _buildDisputesBadge(
+                                            user.openDisputes ?? 0,
+                                          ),
+                                        ),
+                                        DataCell(
+                                          Text(
+                                            _formatDateTime(
+                                              user.lastActivityAt,
+                                            ),
+                                          ),
+                                        ),
+                                        DataCell(
+                                          Text(_formatDateTime(user.createdAt)),
+                                        ),
+                                        DataCell(
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              PopupMenuButton<String>(
+                                                tooltip: 'Actions',
+                                                onSelected: (value) =>
+                                                    _handleAction(
+                                                      context,
+                                                      ref,
+                                                      value,
+                                                      user,
+                                                    ),
+                                                itemBuilder: (context) => [
+                                                  const PopupMenuItem(
+                                                    value: 'view',
+                                                    child: Row(
+                                                      children: [
+                                                        Icon(
+                                                          Icons.visibility,
+                                                          size: 18,
+                                                        ),
+                                                        SizedBox(width: 8),
+                                                        Text('View Details'),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                  const PopupMenuDivider(),
+                                                  if (!user.isSuspended)
+                                                    const PopupMenuItem(
+                                                      value: 'suspend',
+                                                      child: Row(
+                                                        children: [
+                                                          Icon(
+                                                            Icons
+                                                                .pause_circle_outline,
+                                                            size: 18,
+                                                          ),
+                                                          SizedBox(width: 8),
+                                                          Text('Suspend'),
+                                                        ],
+                                                      ),
+                                                    )
+                                                  else
+                                                    const PopupMenuItem(
+                                                      value: 'unsuspend',
+                                                      child: Row(
+                                                        children: [
+                                                          Icon(
+                                                            Icons
+                                                                .play_circle_outline,
+                                                            size: 18,
+                                                          ),
+                                                          SizedBox(width: 8),
+                                                          Text('Unsuspend'),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  const PopupMenuDivider(),
+                                                  const PopupMenuItem(
+                                                    value: 'delete',
+                                                    child: Row(
+                                                      children: [
+                                                        Icon(
+                                                          Icons.delete_outline,
+                                                          size: 18,
+                                                          color: Colors.red,
+                                                        ),
+                                                        SizedBox(width: 8),
+                                                        Text(
+                                                          'Delete User',
+                                                          style: TextStyle(
+                                                            color: Colors.red,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
                                     );
-                                  },
-                                  title: Text(user.email),
-                                  subtitle: Text(
-                                    '${user.name ?? ''} • Created: $created • Bookings: ${user.bookingCount ?? 0}',
-                                  ),
-                                  trailing: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      if (!user.isSuspended)
-                                        TextButton(
-                                          onPressed: () => _confirmSuspend(
-                                            context,
-                                            ref,
-                                            user.id,
-                                          ),
-                                          child: const Text('Suspend'),
-                                        )
-                                      else
-                                        TextButton(
-                                          onPressed: () => _confirmUnsuspend(
-                                            context,
-                                            ref,
-                                            user.id,
-                                          ),
-                                          child: const Text('Unsuspend'),
-                                        ),
-                                      const SizedBox(width: 8),
-                                      IconButton(
-                                        tooltip: 'Anonymize user',
-                                        onPressed: () => _confirmAnonymize(
-                                          context,
-                                          ref,
-                                          user.id,
-                                        ),
-                                        icon: const Icon(Icons.delete_outline),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
+                                  }).toList(),
+                                ),
+                              ),
                             ),
                           ),
 
@@ -532,43 +648,208 @@ class _UsersListScreenState extends ConsumerState<UsersListScreen> {
     }
   }
 
-  Future<void> _confirmAnonymize(
-    BuildContext context,
-    WidgetRef ref,
-    int userId,
-  ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (c) => AlertDialog(
-        title: const Text('Anonymize user'),
-        content: const Text(
-          'Anonymizing will remove personal data for this user. This action cannot be undone. Proceed?',
+  // Helper methods for displaying data
+  Widget _buildStatusChip(String status) {
+    Color color;
+    IconData? icon;
+    
+    switch (status.toLowerCase()) {
+      case 'active':
+        color = Colors.green;
+        icon = Icons.check_circle;
+        break;
+      case 'suspended':
+        color = Colors.orange;
+        icon = Icons.pause_circle;
+        break;
+      case 'inactive':
+        color = Colors.grey;
+        icon = Icons.cancel;
+        break;
+      default:
+        color = Colors.blue;
+        icon = null;
+    }
+
+    return StatusChip(
+      label: status.toUpperCase(),
+      color: color,
+      icon: icon,
+      compact: true,
+    );
+  }
+
+  Widget _buildTrustScoreChip(int? score) {
+    if (score == null) {
+      return const Text('—', style: TextStyle(color: Colors.grey));
+    }
+
+    Color color;
+    IconData icon;
+    if (score >= 80) {
+      color = Colors.green;
+      icon = Icons.verified;
+    } else if (score >= 50) {
+      color = Colors.orange;
+      icon = Icons.warning_amber;
+    } else {
+      color = Colors.red;
+      icon = Icons.error;
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(width: 4),
+        Text(
+          '$score',
+          style: TextStyle(fontWeight: FontWeight.bold, color: color),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(c).pop(false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(c).pop(true),
-            child: const Text('Anonymize'),
-          ),
-        ],
+      ],
+    );
+  }
+
+  Widget _buildDisputesBadge(int count) {
+    if (count == 0) {
+      return const Text('0', style: TextStyle(color: Colors.grey));
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.red.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.red.shade200),
+      ),
+      child: Text(
+        '$count',
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          color: Colors.red.shade700,
+          fontSize: 12,
+        ),
       ),
     );
-    if (confirmed != true) return;
+  }
+
+  String _formatCurrency(int? amountInPaise) {
+    if (amountInPaise == null) return '—';
+    final rupees = amountInPaise / 100;
+    return '₹${rupees.toStringAsFixed(2)}';
+  }
+
+  String _formatDateTime(DateTime? dateTime) {
+    if (dateTime == null) return '—';
+    final now = DateTime.now();
+    final diff = now.difference(dateTime);
+
+    if (diff.inDays == 0) {
+      if (diff.inHours == 0) {
+        return '${diff.inMinutes}m ago';
+      }
+      return '${diff.inHours}h ago';
+    } else if (diff.inDays < 7) {
+      return '${diff.inDays}d ago';
+    }
+
+    return DateFormat.yMMMd().format(dateTime);
+  }
+
+  Future<void> _handleAction(
+    BuildContext context,
+    WidgetRef ref,
+    String action,
+    EndUser user,
+  ) async {
+    switch (action) {
+      case 'view':
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => UserDetailScreen(userId: user.id)),
+        );
+        break;
+      case 'suspend':
+        await _confirmSuspend(context, ref, user.id);
+        break;
+      case 'unsuspend':
+        await _confirmUnsuspend(context, ref, user.id);
+        break;
+      case 'delete':
+        await _showDeleteDialog(context, ref, user);
+        break;
+    }
+  }
+
+  Future<void> _showDeleteDialog(
+    BuildContext context,
+    WidgetRef ref,
+    EndUser user,
+  ) async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => DeleteUserDialog(
+        userId: user.id,
+        userName: user.name ?? user.email,
+        userEmail: user.email,
+        createdAt: user.createdAt,
+      ),
+    );
+
+    if (result == null || !mounted) return;
+
+    final deletionType = result['deletion_type'] as String;
+    final reason = result['reason'] as String;
 
     try {
-      await ref.read(endUsersProvider.notifier).anonymizeUser(userId);
+      // Show loading indicator
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('User anonymized')));
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+
+      // Call delete API
+      final repository = ref.read(endUsersRepositoryProvider);
+      final deleteResult = await repository.deleteUser(
+        user.id,
+        deletionType: deletionType,
+        reason: reason,
+      );
+
+      // Close loading dialog
+      if (!mounted) return;
+      Navigator.of(context).pop();
+
+      // Refresh user list
+      await ref.read(endUsersProvider.notifier).loadUsers();
+
+      // Show success message
+      if (!mounted) return;
+      final softDeleted = deleteResult['soft_deleted'] as bool? ?? false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            softDeleted
+                ? 'User suspended successfully (can be restored)'
+                : 'User deleted successfully',
+          ),
+          backgroundColor: Colors.green,
+        ),
+      );
     } catch (e) {
+      // Close loading dialog
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to anonymize user: $e')));
+      Navigator.of(context).pop();
+
+      // Show error message
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete user: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 }
