@@ -385,6 +385,9 @@ class AuthService {
 
   /// Logout and clear all session data
   Future<void> logout() async {
+    // Stop auto-refresh timer before clearing tokens
+    _apiClient.stopAutoRefresh();
+
     await _delete(_AuthKeys.session);
     await _tokenStorage.clear();
     // Keep last email for convenience
@@ -402,6 +405,9 @@ class AuthService {
         refreshToken: session.refreshToken,
       ),
     );
+
+    // Start auto-refresh timer after successful login
+    _apiClient.startAutoRefresh();
   }
 
   /// Validate if current session is still active

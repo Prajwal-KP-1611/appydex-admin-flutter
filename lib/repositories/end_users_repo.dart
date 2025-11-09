@@ -9,6 +9,7 @@ import '../models/user_payment.dart';
 import '../models/user_review.dart';
 import '../models/dispute.dart';
 import '../models/dispute_message.dart';
+import 'admin_exceptions.dart';
 import '../models/user_activity.dart';
 import '../models/user_session.dart';
 
@@ -113,25 +114,119 @@ class EndUsersRepository {
 
   /// List all end-users with pagination and filters
   /// GET /api/v1/admin/users
+  /// ⚠️ NOTE: Backend endpoint is MISSING! Ticket: BACKEND-USERS-LIST-001
   Future<Pagination<EndUser>> list({
     int page = 1,
     int pageSize = 20,
     String? search,
     String? status,
+    bool useMockData = false,
   }) async {
-    final response = await _apiClient.requestAdmin<Map<String, dynamic>>(
-      '/admin/users',
-      queryParameters: {
-        'page': page,
-        'limit': pageSize,
-        if (search != null && search.isNotEmpty) 'search': search,
-        if (status != null && status.isNotEmpty) 'status': status,
-      },
-    );
+    // If mock data requested, return fake data
+    if (useMockData) {
+      return _getMockUsersList(
+        page: page,
+        pageSize: pageSize,
+        search: search,
+        status: status,
+      );
+    }
 
-    return Pagination.fromJson(
-      response.data ?? {},
-      (json) => EndUser.fromJson(json),
+    try {
+      final response = await _apiClient.requestAdmin<Map<String, dynamic>>(
+        '/admin/users',
+        queryParameters: {
+          'page': page,
+          'limit': pageSize,
+          if (search != null && search.isNotEmpty) 'search': search,
+          if (status != null && status.isNotEmpty) 'status': status,
+        },
+      );
+
+      return Pagination.fromJson(
+        response.data ?? {},
+        (json) => EndUser.fromJson(json),
+      );
+    } catch (e) {
+      // Check if this is a 422 validation error for missing Authorization
+      final is422Auth =
+          e is AppHttpException &&
+          e.statusCode == 422 &&
+          e.toString().toLowerCase().contains('authorization');
+
+      if (is422Auth) {
+        throw Exception(
+          'Authentication required. Please log out and log back in.',
+        );
+      }
+
+      // Check if this is a 404 error (endpoint missing)
+      final is404 =
+          e is AppHttpException && e.statusCode == 404 ||
+          e.toString().contains('404') ||
+          e.toString().contains('statusCode: 404');
+
+      if (is404) {
+        throw AdminEndpointMissing('GET /api/v1/admin/users');
+      }
+      rethrow;
+    }
+  }
+
+  /// Generate mock users data for development
+  Pagination<EndUser> _getMockUsersList({
+    int page = 1,
+    int pageSize = 20,
+    String? search,
+    String? status,
+  }) {
+    // Generate 79 fake users (matching backend count)
+    final allUsers = List.generate(79, (i) {
+      final id = i + 1;
+      return EndUser(
+        id: id,
+        email: 'user$id@example.com',
+        name: 'User $id',
+        phone: '+9198765${(43210 + id).toString().padLeft(5, '0')}',
+        isActive: status == null || status == 'active',
+        isSuspended: status == 'suspended',
+        createdAt: DateTime.now().subtract(Duration(days: id * 3)),
+        bookingCount: (id % 10) + 5,
+      );
+    });
+
+    // Apply search filter
+    var filtered = allUsers;
+    if (search != null && search.isNotEmpty) {
+      final searchLower = search.toLowerCase();
+      filtered = allUsers
+          .where(
+            (u) =>
+                u.email.toLowerCase().contains(searchLower) ||
+                (u.name?.toLowerCase().contains(searchLower) ?? false) ||
+                (u.phone?.contains(search) ?? false),
+          )
+          .toList();
+    }
+
+    // Apply status filter
+    if (status == 'active') {
+      filtered = filtered.where((u) => u.isActive && !u.isSuspended).toList();
+    } else if (status == 'suspended') {
+      filtered = filtered.where((u) => u.isSuspended).toList();
+    }
+
+    // Paginate
+    final total = filtered.length;
+    final startIndex = (page - 1) * pageSize;
+    final endIndex = (startIndex + pageSize).clamp(0, total);
+    final pageItems = filtered.sublist(startIndex.clamp(0, total), endIndex);
+
+    return Pagination(
+      items: pageItems,
+      total: total,
+      page: page,
+      pageSize: pageSize,
     );
   }
 
@@ -659,6 +754,13 @@ class EndUsersNotifier extends StateNotifier<AsyncValue<Pagination<EndUser>>> {
   int _pageSize = 20;
   String? _search;
   String? _status;
+  bool _useMockData = false;
+
+  /// Enable mock data mode (when backend endpoint is missing)
+  void enableMockData() {
+    _useMockData = true;
+    loadUsers();
+  }
 
   Future<void> loadUsers({
     int? page,
@@ -678,6 +780,7 @@ class EndUsersNotifier extends StateNotifier<AsyncValue<Pagination<EndUser>>> {
         pageSize: _pageSize,
         search: _search,
         status: _status,
+        useMockData: _useMockData,
       );
     });
   }

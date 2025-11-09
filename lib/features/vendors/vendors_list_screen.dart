@@ -277,105 +277,133 @@ class _VendorsListScreenState extends ConsumerState<VendorsListScreen> {
                   child: DataTableSimple(
                     columns: const [
                       DataTableSimpleColumn(label: 'Select', flex: 1),
-                      DataTableSimpleColumn(label: 'Company', flex: 3),
+                      DataTableSimpleColumn(label: 'Company', flex: 4),
                       DataTableSimpleColumn(label: 'Slug', flex: 2),
-                      DataTableSimpleColumn(label: 'Contact', flex: 2),
-                      DataTableSimpleColumn(label: 'Status', flex: 1),
+                      DataTableSimpleColumn(label: 'Contact', flex: 3),
+                      DataTableSimpleColumn(label: 'Status', flex: 3),
                       DataTableSimpleColumn(label: 'Created', flex: 2),
-                      DataTableSimpleColumn(label: 'Actions', flex: 2),
+                      DataTableSimpleColumn(label: 'Actions', flex: 3),
                     ],
                     rows: rows
                         .map(
                           (vendor) => [
-                            Checkbox(
-                              value: state.selected.contains(vendor.id),
-                              onChanged: (value) =>
-                                  notifier.toggleSelection(vendor.id),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: Checkbox(
+                                value: state.selected.contains(vendor.id),
+                                onChanged: (value) =>
+                                    notifier.toggleSelection(vendor.id),
+                              ),
                             ),
-                            _VendorNameCell(vendor: vendor),
-                            Text(vendor.slug),
-                            Builder(
-                              builder: (_) {
-                                final contacts = [
-                                  if (vendor.contactEmail != null)
-                                    vendor.contactEmail!,
-                                  if (vendor.contactPhone != null)
-                                    vendor.contactPhone!,
-                                ].where((value) => value.isNotEmpty).toList();
-                                return Text(
-                                  contacts.isEmpty ? '—' : contacts.join('\n'),
-                                );
-                              },
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: _VendorNameCell(vendor: vendor),
                             ),
-                            StatusChip(
-                              label: vendor.status.toUpperCase(),
-                              color: _statusColor(theme, vendor.status),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(vendor.slug),
                             ),
-                            Text(
-                              MaterialLocalizations.of(
-                                context,
-                              ).formatMediumDate(vendor.createdAt),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: Builder(
+                                builder: (_) {
+                                  final contacts = [
+                                    if (vendor.contactEmail != null)
+                                      vendor.contactEmail!,
+                                    if (vendor.contactPhone != null)
+                                      vendor.contactPhone!,
+                                  ].where((value) => value.isNotEmpty).toList();
+                                  return Text(
+                                    contacts.isEmpty
+                                        ? '—'
+                                        : contacts.join('\n'),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  );
+                                },
+                              ),
                             ),
-                            _VendorActions(
-                              vendor: vendor,
-                              onView: () => _openVendorDetail(context, vendor),
-                              onVerify: vendor.isPending
-                                  ? () async {
-                                      await notifier.verifyVendor(vendor.id);
-                                      if (!context.mounted) return;
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        buildTraceSnackbar(
-                                          'Vendor verified',
-                                          traceId: lastTraceId,
-                                        ),
-                                      );
-                                    }
-                                  : null,
-                              onReject: vendor.isPending
-                                  ? () async {
-                                      final reason = await showDialog<String>(
-                                        context: context,
-                                        builder: (context) =>
-                                            RejectVendorDialog(
-                                              vendorName: vendor.companyName,
-                                            ),
-                                      );
-                                      if (reason == null) return;
-                                      await notifier.rejectVendor(
-                                        vendor.id,
-                                        reason: reason,
-                                      );
-                                      if (!context.mounted) return;
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        buildTraceSnackbar(
-                                          'Vendor rejected',
-                                          traceId: lastTraceId,
-                                        ),
-                                      );
-                                    }
-                                  : null,
-                              onExport: () {
-                                final csv = toCsv([
-                                  {
-                                    'id': vendor.id,
-                                    'company_name': vendor.companyName,
-                                    'slug': vendor.slug,
-                                    'status': vendor.status,
-                                    'contact_email': vendor.contactEmail ?? '',
-                                    'contact_phone': vendor.contactPhone ?? '',
-                                    'created_at': vendor.createdAt
-                                        .toIso8601String(),
-                                  },
-                                ]);
-                                Clipboard.setData(ClipboardData(text: csv));
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  buildTraceSnackbar('Vendor CSV copied'),
-                                );
-                              },
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: StatusChip(
+                                label: vendor.status.toUpperCase(),
+                                color: _statusColor(theme, vendor.status),
+                              ),
+                            ),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                MaterialLocalizations.of(
+                                  context,
+                                ).formatMediumDate(vendor.createdAt),
+                              ),
+                            ),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: _VendorActions(
+                                vendor: vendor,
+                                onView: () =>
+                                    _openVendorDetail(context, vendor),
+                                onVerify: vendor.isPending
+                                    ? () async {
+                                        await notifier.verifyVendor(vendor.id);
+                                        if (!context.mounted) return;
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          buildTraceSnackbar(
+                                            'Vendor verified',
+                                            traceId: lastTraceId,
+                                          ),
+                                        );
+                                      }
+                                    : null,
+                                onReject: vendor.isPending
+                                    ? () async {
+                                        final reason = await showDialog<String>(
+                                          context: context,
+                                          builder: (context) =>
+                                              RejectVendorDialog(
+                                                vendorName: vendor.companyName,
+                                              ),
+                                        );
+                                        if (reason == null) return;
+                                        await notifier.rejectVendor(
+                                          vendor.id,
+                                          reason: reason,
+                                        );
+                                        if (!context.mounted) return;
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          buildTraceSnackbar(
+                                            'Vendor rejected',
+                                            traceId: lastTraceId,
+                                          ),
+                                        );
+                                      }
+                                    : null,
+                                onExport: () {
+                                  final csv = toCsv([
+                                    {
+                                      'id': vendor.id,
+                                      'company_name': vendor.companyName,
+                                      'slug': vendor.slug,
+                                      'status': vendor.status,
+                                      'contact_email':
+                                          vendor.contactEmail ?? '',
+                                      'contact_phone':
+                                          vendor.contactPhone ?? '',
+                                      'created_at': vendor.createdAt
+                                          .toIso8601String(),
+                                    },
+                                  ]);
+                                  Clipboard.setData(ClipboardData(text: csv));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    buildTraceSnackbar('Vendor CSV copied'),
+                                  );
+                                },
+                              ),
                             ),
                           ],
                         )

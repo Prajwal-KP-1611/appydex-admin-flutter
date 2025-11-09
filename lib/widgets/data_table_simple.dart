@@ -66,79 +66,93 @@ class DataTableSimple extends StatelessWidget {
     final theme = Theme.of(context);
     final totalPages = (total / pageSize).ceil().clamp(1, 1 << 31);
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minWidth: 600),
-              child: Table(
-                columnWidths: {
-                  for (var i = 0; i < columns.length; i++)
-                    i: FlexColumnWidth(columns[i].flex.toDouble()),
-                },
-                defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                children: [
-                  TableRow(
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHighest,
-                    ),
-                    children: columns
-                        .map(
-                          (column) => Padding(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 12,
-                              horizontal: 16,
-                            ),
-                            child: Text(
-                              column.label,
-                              style: theme.textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: theme.colorScheme.onSurface,
-                              ),
-                              textAlign: column.numeric
-                                  ? TextAlign.end
-                                  : TextAlign.start,
-                            ),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                  for (final row in rows)
-                    TableRow(
-                      decoration: BoxDecoration(
-                        border: Border(
-                          bottom: BorderSide(
-                            color: theme.dividerColor.withValues(alpha: 0.1),
-                          ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: Scrollbar(
+            thumbVisibility: true,
+            child: SingleChildScrollView(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minWidth: 1000),
+                  child: Table(
+                    columnWidths: {
+                      for (var i = 0; i < columns.length; i++)
+                        i: FlexColumnWidth(columns[i].flex.toDouble()),
+                    },
+                    defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                    children: [
+                      TableRow(
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest,
                         ),
+                        children: columns
+                            .map(
+                              (column) => Container(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                  horizontal: 16,
+                                ),
+                                child: Text(
+                                  column.label,
+                                  style: theme.textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: theme.colorScheme.onSurface,
+                                  ),
+                                  textAlign: column.numeric
+                                      ? TextAlign.end
+                                      : TextAlign.start,
+                                ),
+                              ),
+                            )
+                            .toList(),
                       ),
-                      children: [
-                        for (var i = 0; i < columns.length; i++)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 12,
-                              horizontal: 16,
+                      for (final row in rows)
+                        TableRow(
+                          decoration: BoxDecoration(
+                            border: Border(
+                              bottom: BorderSide(
+                                color: theme.dividerColor.withValues(
+                                  alpha: 0.1,
+                                ),
+                              ),
                             ),
-                            child: row.elementAt(i),
                           ),
-                      ],
-                    ),
-                ],
+                          children: [
+                            for (var i = 0; i < columns.length; i++)
+                              Container(
+                                padding: EdgeInsets.fromLTRB(
+                                  16,
+                                  12,
+                                  i == columns.length - 1
+                                      ? 32
+                                      : 16, // Extra padding on last column for scrollbar
+                                  12,
+                                ),
+                                alignment: columns[i].numeric
+                                    ? Alignment.centerRight
+                                    : Alignment.centerLeft,
+                                child: row.elementAt(i),
+                              ),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          if (onPageChange != null)
-            _PaginationControls(
-              page: page,
-              totalPages: totalPages,
-              onPageChange: onPageChange!,
-            ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 16),
+        if (onPageChange != null)
+          _PaginationControls(
+            page: page,
+            totalPages: totalPages,
+            onPageChange: onPageChange!,
+          ),
+      ],
     );
   }
 }

@@ -10,6 +10,7 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 // AdminConfig and legacy X-Admin-Token removed — admin endpoints use JWT Bearer now.
+import 'auth/token_manager.dart';
 import 'auth/token_storage.dart';
 import 'config.dart';
 
@@ -154,6 +155,7 @@ class ApiClient {
   final Ref _ref;
   final TokenStorage _tokenStorage;
   final Dio _dio;
+  final TokenManager _tokenManager = TokenManager();
 
   Completer<void>? _refreshCompleter;
 
@@ -540,6 +542,10 @@ class ApiClient {
         if (parsed.isValid) {
           tokens = parsed;
           await _tokenStorage.save(parsed);
+          _tokenManager.markRefreshed();
+
+          // Start auto-refresh timer after successful token save
+          startAutoRefresh();
         } else {
           error = const TokenRefreshException('Invalid refresh response');
         }
@@ -605,6 +611,18 @@ class ApiClient {
     }
 
     return _dio.fetch<dynamic>(options);
+  }
+
+  /// Starts the auto-refresh timer that proactively refreshes tokens before expiry
+  void startAutoRefresh() {
+    _tokenManager.startAutoRefresh(() async {
+      await _refreshTokens(source: 'auto');
+    });
+  }
+
+  /// Stops the auto-refresh timer (call on logout)
+  void stopAutoRefresh() {
+    _tokenManager.stopAutoRefresh();
   }
 
   DioException _wrapError(DioException error, String? traceId) {

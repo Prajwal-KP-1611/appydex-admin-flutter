@@ -21,12 +21,13 @@ class StatusChip extends StatelessWidget {
     final textStyle = theme.textTheme.labelSmall?.copyWith(
       color: theme.colorScheme.onPrimary,
       fontWeight: FontWeight.w600,
+      fontSize: 11, // Slightly smaller to fit longer words
     );
 
     return Container(
       padding: compact
           ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
-          : const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          : const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: effectiveColor,
         borderRadius: BorderRadius.circular(999),
@@ -38,7 +39,14 @@ class StatusChip extends StatelessWidget {
             Icon(icon, size: 14, color: theme.colorScheme.onPrimary),
             const SizedBox(width: 6),
           ],
-          Text(label, style: textStyle),
+          Flexible(
+            child: Text(
+              label,
+              style: textStyle,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+          ),
         ],
       ),
     );

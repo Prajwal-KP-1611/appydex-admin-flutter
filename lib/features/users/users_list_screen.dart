@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/permissions.dart';
+import '../../core/auth/auth_service.dart';
 import '../../features/shared/admin_sidebar.dart';
+import '../../repositories/admin_exceptions.dart';
 import '../../repositories/end_users_repo.dart';
 import '../../routes.dart';
 import 'user_detail_screen.dart';
@@ -128,22 +130,169 @@ class _UsersListScreenState extends ConsumerState<UsersListScreen> {
                     loading: () =>
                         const Center(child: CircularProgressIndicator()),
                     error: (err, stack) {
+                      // Check if this is the missing endpoint error
+                      final isEndpointMissing = err is AdminEndpointMissing;
+
+                      if (isEndpointMissing) {
+                        return Container(
+                          margin: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFEBEE),
+                            border: Border.all(
+                              color: const Color(0xFFD32F2F),
+                              width: 2,
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.error_outline,
+                                  size: 64,
+                                  color: Color(0xFFD32F2F),
+                                ),
+                                const SizedBox(height: 16),
+                                const Text(
+                                  'Backend Endpoint Missing',
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFFD32F2F),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'The backend has not implemented the users list endpoint yet.',
+                                        style: TextStyle(fontSize: 16),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      const Text(
+                                        'Missing: GET /api/v1/admin/users',
+                                        style: TextStyle(
+                                          fontFamily: 'monospace',
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      const Text(
+                                        'See docs/backend-tickets/BACKEND_TICKET_USERS_LIST.md for details.',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                Wrap(
+                                  spacing: 12,
+                                  runSpacing: 12,
+                                  alignment: WrapAlignment.center,
+                                  children: [
+                                    ElevatedButton.icon(
+                                      onPressed: () => ref
+                                          .read(endUsersProvider.notifier)
+                                          .loadUsers(),
+                                      icon: const Icon(Icons.refresh),
+                                      label: const Text('Retry'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(
+                                          0xFFD32F2F,
+                                        ),
+                                        foregroundColor: Colors.white,
+                                      ),
+                                    ),
+                                    OutlinedButton.icon(
+                                      onPressed: () => ref
+                                          .read(endUsersProvider.notifier)
+                                          .enableMockData(),
+                                      icon: const Icon(Icons.science),
+                                      label: const Text(
+                                        'Use Mock Data (79 users)',
+                                      ),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: const Color(
+                                          0xFFD32F2F,
+                                        ),
+                                        side: const BorderSide(
+                                          color: Color(0xFFD32F2F),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+
+                      // Other errors
                       final message = err is Exception
                           ? err.toString()
                           : 'Failed to load users';
+
+                      // Check if it's an authentication error
+                      final isAuthError =
+                          message.toLowerCase().contains('authentication') ||
+                          message.toLowerCase().contains('authorization');
+
                       return Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text(message),
-                            const SizedBox(height: 12),
-                            ElevatedButton.icon(
-                              onPressed: () => ref
-                                  .read(endUsersProvider.notifier)
-                                  .loadUsers(),
-                              icon: const Icon(Icons.refresh),
-                              label: const Text('Retry'),
+                            Icon(
+                              isAuthError
+                                  ? Icons.lock_outline
+                                  : Icons.error_outline,
+                              size: 48,
+                              color: Colors.red,
                             ),
+                            const SizedBox(height: 16),
+                            Text(
+                              message,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(fontSize: 16),
+                            ),
+                            const SizedBox(height: 12),
+                            if (isAuthError) ...[
+                              ElevatedButton.icon(
+                                onPressed: () {
+                                  // Log out and redirect to login
+                                  ref
+                                      .read(adminSessionProvider.notifier)
+                                      .logout();
+                                },
+                                icon: const Icon(Icons.logout),
+                                label: const Text('Log Out & Re-login'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red,
+                                  foregroundColor: Colors.white,
+                                ),
+                              ),
+                            ] else ...[
+                              ElevatedButton.icon(
+                                onPressed: () => ref
+                                    .read(endUsersProvider.notifier)
+                                    .loadUsers(),
+                                icon: const Icon(Icons.refresh),
+                                label: const Text('Retry'),
+                              ),
+                            ],
                           ],
                         ),
                       );
