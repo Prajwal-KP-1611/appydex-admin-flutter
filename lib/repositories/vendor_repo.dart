@@ -5,6 +5,13 @@ import '../core/api_client.dart';
 import '../core/pagination.dart';
 import '../core/utils/idempotency.dart';
 import '../models/vendor.dart';
+import '../models/vendor_analytics.dart';
+import '../models/vendor_application.dart';
+import '../models/vendor_booking.dart';
+import '../models/vendor_lead.dart';
+import '../models/vendor_payout.dart';
+import '../models/vendor_revenue.dart';
+import '../models/vendor_service.dart';
 import 'admin_exceptions.dart';
 
 class VendorRepository {
@@ -97,6 +104,264 @@ class VendorRepository {
     final vendor = await get(id);
     return vendor.documents;
   }
+
+  // ==================== NEW VENDOR MANAGEMENT METHODS ====================
+
+  /// Get vendor application details with registration progress
+  /// GET /api/v1/admin/vendors/{vendor_id}/application
+  Future<VendorApplication> getApplication(int vendorId) async {
+    try {
+      final response = await _client.requestAdmin<Map<String, dynamic>>(
+        '/admin/vendors/$vendorId/application',
+      );
+      return VendorApplication.fromJson(response.data ?? {});
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw AdminEndpointMissing('admin/vendors/:id/application');
+      }
+      rethrow;
+    }
+  }
+
+  /// List vendor services with filtering
+  /// GET /api/v1/admin/vendors/{vendor_id}/services
+  Future<Pagination<VendorService>> getServices(
+    int vendorId, {
+    String? status,
+    String? category,
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    try {
+      final response = await _client.requestAdmin<Map<String, dynamic>>(
+        '/admin/vendors/$vendorId/services',
+        queryParameters: {
+          'page': page,
+          'page_size': pageSize,
+          if (status != null) 'status': status,
+          if (category != null) 'category': category,
+        },
+      );
+      return Pagination.fromJson(
+        response.data ?? {},
+        (json) => VendorService.fromJson(json),
+      );
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw AdminEndpointMissing('admin/vendors/:id/services');
+      }
+      rethrow;
+    }
+  }
+
+  /// List vendor bookings with summary
+  /// GET /api/v1/admin/vendors/{vendor_id}/bookings
+  Future<VendorBookingsResult> getBookings(
+    int vendorId, {
+    String? status,
+    DateTime? fromDate,
+    DateTime? toDate,
+    String sort = 'created_at',
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    try {
+      final response = await _client.requestAdmin<Map<String, dynamic>>(
+        '/admin/vendors/$vendorId/bookings',
+        queryParameters: {
+          'page': page,
+          'page_size': pageSize,
+          if (status != null) 'status': status,
+          if (fromDate != null) 'from_date': fromDate.toIso8601String(),
+          if (toDate != null) 'to_date': toDate.toIso8601String(),
+          'sort': sort,
+        },
+      );
+
+      final data = response.data ?? {};
+      final bookings = Pagination.fromJson(
+        data,
+        (json) => VendorBooking.fromJson(json),
+      );
+      final summary = VendorBookingSummary.fromJson(data['summary'] ?? {});
+
+      return VendorBookingsResult(bookings: bookings, summary: summary);
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw AdminEndpointMissing('admin/vendors/:id/bookings');
+      }
+      rethrow;
+    }
+  }
+
+  /// Get vendor revenue summary with time series
+  /// GET /api/v1/admin/vendors/{vendor_id}/revenue
+  Future<VendorRevenue> getRevenue(
+    int vendorId, {
+    DateTime? fromDate,
+    DateTime? toDate,
+    String groupBy = 'day',
+  }) async {
+    try {
+      final response = await _client.requestAdmin<Map<String, dynamic>>(
+        '/admin/vendors/$vendorId/revenue',
+        queryParameters: {
+          if (fromDate != null) 'from_date': fromDate.toIso8601String(),
+          if (toDate != null) 'to_date': toDate.toIso8601String(),
+          'group_by': groupBy,
+        },
+      );
+      return VendorRevenue.fromJson(response.data ?? {});
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw AdminEndpointMissing('admin/vendors/:id/revenue');
+      }
+      rethrow;
+    }
+  }
+
+  /// List vendor leads with conversion tracking
+  /// GET /api/v1/admin/vendors/{vendor_id}/leads
+  Future<VendorLeadsResult> getLeads(
+    int vendorId, {
+    String? status,
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    try {
+      final response = await _client.requestAdmin<Map<String, dynamic>>(
+        '/admin/vendors/$vendorId/leads',
+        queryParameters: {
+          'page': page,
+          'page_size': pageSize,
+          if (status != null) 'status': status,
+        },
+      );
+
+      final data = response.data ?? {};
+      final leads = Pagination.fromJson(
+        data,
+        (json) => VendorLead.fromJson(json),
+      );
+      final summary = VendorLeadSummary.fromJson(data['summary'] ?? {});
+
+      return VendorLeadsResult(leads: leads, summary: summary);
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw AdminEndpointMissing('admin/vendors/:id/leads');
+      }
+      rethrow;
+    }
+  }
+
+  /// List vendor payouts
+  /// GET /api/v1/admin/vendors/{vendor_id}/payouts
+  Future<Pagination<VendorPayout>> getPayouts(
+    int vendorId, {
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    try {
+      final response = await _client.requestAdmin<Map<String, dynamic>>(
+        '/admin/vendors/$vendorId/payouts',
+        queryParameters: {'page': page, 'page_size': pageSize},
+      );
+      return Pagination.fromJson(
+        response.data ?? {},
+        (json) => VendorPayout.fromJson(json),
+      );
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw AdminEndpointMissing('admin/vendors/:id/payouts');
+      }
+      rethrow;
+    }
+  }
+
+  /// Get vendor analytics dashboard
+  /// GET /api/v1/admin/vendors/{vendor_id}/analytics
+  Future<VendorAnalytics> getAnalytics(
+    int vendorId, {
+    DateTime? fromDate,
+    DateTime? toDate,
+  }) async {
+    try {
+      final response = await _client.requestAdmin<Map<String, dynamic>>(
+        '/admin/vendors/$vendorId/analytics',
+        queryParameters: {
+          if (fromDate != null) 'from_date': fromDate.toIso8601String(),
+          if (toDate != null) 'to_date': toDate.toIso8601String(),
+        },
+      );
+      return VendorAnalytics.fromJson(response.data ?? {});
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw AdminEndpointMissing('admin/vendors/:id/analytics');
+      }
+      rethrow;
+    }
+  }
+
+  /// List vendor documents
+  /// GET /api/v1/admin/vendors/{vendor_id}/documents
+  Future<List<VendorDocument>> getDocumentsList(int vendorId) async {
+    try {
+      final response = await _client.requestAdmin<Map<String, dynamic>>(
+        '/admin/vendors/$vendorId/documents',
+      );
+      final items = (response.data?['items'] as List?) ?? [];
+      return items.map((json) => VendorDocument.fromJson(json)).toList();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw AdminEndpointMissing('admin/vendors/:id/documents');
+      }
+      rethrow;
+    }
+  }
+
+  /// Verify or reject a document
+  /// POST /api/v1/admin/vendors/{vendor_id}/documents/{document_id}/verify
+  Future<void> verifyDocument(
+    int vendorId,
+    String documentId, {
+    required bool approve,
+    String? notes,
+  }) async {
+    try {
+      await _client.requestAdmin(
+        '/admin/vendors/$vendorId/documents/$documentId/verify',
+        method: 'POST',
+        data: {
+          'status': approve ? 'verified' : 'rejected',
+          if (notes != null) 'notes': notes,
+        },
+        options: idempotentOptions(),
+      );
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw AdminEndpointMissing(
+          'admin/vendors/:id/documents/:doc_id/verify',
+        );
+      }
+      rethrow;
+    }
+  }
+}
+
+// Helper result classes for methods that return multiple values
+
+class VendorBookingsResult {
+  final Pagination<VendorBooking> bookings;
+  final VendorBookingSummary summary;
+
+  VendorBookingsResult({required this.bookings, required this.summary});
+}
+
+class VendorLeadsResult {
+  final Pagination<VendorLead> leads;
+  final VendorLeadSummary summary;
+
+  VendorLeadsResult({required this.leads, required this.summary});
 }
 
 /// Result of vendor verification/rejection operation

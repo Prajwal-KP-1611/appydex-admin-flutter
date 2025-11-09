@@ -21,6 +21,7 @@ import 'features/services/services_list_screen.dart';
 import 'features/subscriptions/subscriptions_admin_screen.dart';
 import 'features/vendors/vendor_detail_screen.dart';
 import 'features/vendors/vendors_list_screen.dart';
+import 'features/users/users_list_screen.dart';
 import 'features/payments/payments_list_screen.dart';
 import 'features/analytics/analytics_dashboard_screen.dart';
 import 'features/campaigns/referrals_screen.dart';
@@ -288,7 +289,7 @@ class _AppydexAdminAppState extends ConsumerState<AppydexAdminApp> {
           case '/users':
             return MaterialPageRoute(
               settings: settings,
-              builder: (_) => const VendorsListScreen(), // placeholder
+              builder: (_) => const UsersListScreen(),
             );
           case '/payments':
             return MaterialPageRoute(

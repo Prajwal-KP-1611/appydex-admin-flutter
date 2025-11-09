@@ -16,7 +16,7 @@ class Vendor {
   final int userId;
   final String companyName;
   final String slug;
-  final String status; // pending, verified, rejected
+  final String status; // pending, onboarding, verified, rejected
   final DateTime createdAt;
   final DateTime? updatedAt;
   final Map<String, dynamic> metadata;
@@ -25,6 +25,7 @@ class Vendor {
   String get displayName => companyName;
   bool get isVerified => status == 'verified';
   bool get isPending => status == 'pending';
+  bool get isOnboarding => status == 'onboarding';
   bool get isRejected => status == 'rejected';
 
   String? get contactEmail =>

@@ -119,6 +119,10 @@ class _VendorsListScreenState extends ConsumerState<VendorsListScreen> {
                             child: Text('Pending'),
                           ),
                           DropdownMenuItem(
+                            value: 'onboarding',
+                            child: Text('Onboarding'),
+                          ),
+                          DropdownMenuItem(
                             value: 'verified',
                             child: Text('Verified'),
                           ),
@@ -489,6 +493,8 @@ Color _statusColor(ThemeData theme, String status) {
       return Colors.green;
     case 'rejected':
       return theme.colorScheme.error;
+    case 'onboarding':
+      return Colors.blue; // Blue for onboarding status
     case 'pending':
     default:
       return theme.colorScheme.secondary;

@@ -95,6 +95,7 @@ class AuthService {
 
       print('LOGIN RESPONSE: ${jsonEncode(response.data)}');
 
+      // Response is automatically unwrapped by API client interceptor
       final session = AdminSession.fromJson(response.data!);
 
       if (!session.isValid) {

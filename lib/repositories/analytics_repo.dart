@@ -9,22 +9,26 @@ class TopSearchItem {
   final String query;
   final int count;
   factory TopSearchItem.fromJson(Map<String, dynamic> json) => TopSearchItem(
-        query: json['query'] as String? ?? '',
-        count: (json['count'] as num?)?.toInt() ?? 0,
-      );
+    query: json['query'] as String? ?? '',
+    count: (json['count'] as num?)?.toInt() ?? 0,
+  );
 }
 
 class CtrPoint {
-  const CtrPoint({required this.date, required this.clicks, required this.impressions});
+  const CtrPoint({
+    required this.date,
+    required this.clicks,
+    required this.impressions,
+  });
   final DateTime date;
   final int clicks;
   final int impressions;
   double get ctr => impressions == 0 ? 0 : (clicks / impressions) * 100;
   factory CtrPoint.fromJson(Map<String, dynamic> json) => CtrPoint(
-        date: DateTime.parse(json['date'] as String),
-        clicks: (json['clicks'] as num?)?.toInt() ?? 0,
-        impressions: (json['impressions'] as num?)?.toInt() ?? 0,
-      );
+    date: DateTime.parse(json['date'] as String),
+    clicks: (json['clicks'] as num?)?.toInt() ?? 0,
+    impressions: (json['impressions'] as num?)?.toInt() ?? 0,
+  );
 }
 
 /// Repository for analytics dashboard data
@@ -48,7 +52,9 @@ class AnalyticsRepository {
         },
       );
       final data = response.data?['items'] as List<dynamic>? ?? const [];
-      return data.map((e) => TopSearchItem.fromJson(e as Map<String, dynamic>)).toList();
+      return data
+          .map((e) => TopSearchItem.fromJson(e as Map<String, dynamic>))
+          .toList();
     } on DioException catch (error) {
       if (error.response?.statusCode == 404) {
         throw AdminEndpointMissing('admin/analytics/top-searches');
@@ -72,7 +78,9 @@ class AnalyticsRepository {
         },
       );
       final data = response.data?['points'] as List<dynamic>? ?? const [];
-      return data.map((e) => CtrPoint.fromJson(e as Map<String, dynamic>)).toList();
+      return data
+          .map((e) => CtrPoint.fromJson(e as Map<String, dynamic>))
+          .toList();
     } on DioException catch (error) {
       if (error.response?.statusCode == 404) {
         throw AdminEndpointMissing('admin/analytics/ctr');
@@ -104,6 +112,69 @@ class AnalyticsRepository {
     } on DioException catch (error) {
       if (error.response?.statusCode == 404) {
         throw AdminEndpointMissing('admin/analytics/export');
+      }
+      rethrow;
+    }
+  }
+
+  /// Fetch booking analytics
+  /// GET /api/v1/admin/analytics/bookings
+  ///
+  /// Query Parameters:
+  /// - from: Start date (ISO 8601)
+  /// - to: End date (ISO 8601)
+  /// - status: Filter by status
+  /// - group_by: Group by day, week, or month (default: day)
+  Future<Map<String, dynamic>> fetchBookingAnalytics({
+    required DateTime start,
+    required DateTime end,
+    String? status,
+    String groupBy = 'day',
+  }) async {
+    try {
+      final response = await _client.requestAdmin<Map<String, dynamic>>(
+        '/admin/analytics/bookings',
+        queryParameters: {
+          'from': start.toIso8601String(),
+          'to': end.toIso8601String(),
+          if (status != null && status.isNotEmpty) 'status': status,
+          'group_by': groupBy,
+        },
+      );
+      return response.data ?? {};
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw AdminEndpointMissing('admin/analytics/bookings');
+      }
+      rethrow;
+    }
+  }
+
+  /// Fetch revenue analytics
+  /// GET /api/v1/admin/analytics/revenue
+  ///
+  /// Query Parameters:
+  /// - from: Start date (ISO 8601)
+  /// - to: End date (ISO 8601)
+  /// - group_by: Group by day, week, or month (default: day)
+  Future<Map<String, dynamic>> fetchRevenueAnalytics({
+    required DateTime start,
+    required DateTime end,
+    String groupBy = 'day',
+  }) async {
+    try {
+      final response = await _client.requestAdmin<Map<String, dynamic>>(
+        '/admin/analytics/revenue',
+        queryParameters: {
+          'from': start.toIso8601String(),
+          'to': end.toIso8601String(),
+          'group_by': groupBy,
+        },
+      );
+      return response.data ?? {};
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw AdminEndpointMissing('admin/analytics/revenue');
       }
       rethrow;
     }

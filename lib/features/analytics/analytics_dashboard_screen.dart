@@ -34,7 +34,8 @@ class AnalyticsDashboardScreen extends ConsumerWidget {
         const SizedBox(width: 8),
       ],
       child: RefreshIndicator(
-        onRefresh: () async => ref.read(analyticsDashboardProvider.notifier).load(),
+        onRefresh: () async =>
+            ref.read(analyticsDashboardProvider.notifier).load(),
         child: ListView(
           padding: const EdgeInsets.all(24),
           children: [
@@ -45,7 +46,9 @@ class AnalyticsDashboardScreen extends ConsumerWidget {
                   padding: const EdgeInsets.all(16),
                   child: Text(
                     'You do not have permission to view analytics.',
-                    style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onErrorContainer,
+                    ),
                   ),
                 ),
               )
@@ -53,10 +56,12 @@ class AnalyticsDashboardScreen extends ConsumerWidget {
               _FiltersBar(state: state),
             const SizedBox(height: 16),
             if (hasView && state.isLoading)
-              const Center(child: Padding(
-                padding: EdgeInsets.all(24),
-                child: CircularProgressIndicator(),
-              )),
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child: CircularProgressIndicator(),
+                ),
+              ),
             if (hasView && state.error != null)
               Card(
                 color: Theme.of(context).colorScheme.errorContainer,
@@ -124,16 +129,24 @@ class _TopSearchesCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Top Searches', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              'Top Searches',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 12),
-            if (state.topSearches.isEmpty)
-              const Text('No data available'),
+            if (state.topSearches.isEmpty) const Text('No data available'),
             for (final item in state.topSearches)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 child: Row(
                   children: [
-                    Expanded(child: Text(item.query, maxLines: 1, overflow: TextOverflow.ellipsis)),
+                    Expanded(
+                      child: Text(
+                        item.query,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                     const SizedBox(width: 12),
                     Text(item.count.toString()),
                   ],
@@ -157,17 +170,23 @@ class _CtrCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('CTR Over Time', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              'CTR Over Time',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 12),
-            if (state.ctrSeries.isEmpty)
-              const Text('No data available'),
+            if (state.ctrSeries.isEmpty) const Text('No data available'),
             // Simple textual series placeholder (no chart lib)
             for (final point in state.ctrSeries)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Row(
                   children: [
-                    Expanded(child: Text('${point.date.toLocal().toIso8601String().substring(0, 10)}')),
+                    Expanded(
+                      child: Text(
+                        point.date.toLocal().toIso8601String().substring(0, 10),
+                      ),
+                    ),
                     Text('${point.ctr.toStringAsFixed(2)}%'),
                   ],
                 ),

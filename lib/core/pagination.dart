@@ -26,36 +26,41 @@ class Pagination<T> {
     Map<String, dynamic> json,
     T Function(Map<String, dynamic> item) decode,
   ) {
-    // Support both old format {items, total, page, page_size}
-    // and new format {data, meta: {page, page_size, total, total_pages}}
+    // Support 3 backend pagination formats:
+    // Format A: {items: [], total, skip, limit} - accounts, service-types
+    // Format B: {items: [], meta: {page, page_size, total}} - vendors
+    // Format C: {data: [], meta: {page, page_size, total}} - jobs
     List<dynamic> itemsList;
     int total;
     int page;
     int pageSize;
 
     if (json.containsKey('data') && json.containsKey('meta')) {
-      // New format: {data: [...], meta: {...}}
+      // Format C: {data: [...], meta: {...}}
       itemsList = json['data'] as List<dynamic>? ?? const [];
       final meta = json['meta'] as Map<String, dynamic>? ?? {};
       total = meta['total'] as int? ?? itemsList.length;
       page = meta['page'] as int? ?? 1;
       pageSize = _resolvePageSize(meta, fallback: itemsList.length);
     } else if (json.containsKey('items') && json.containsKey('meta')) {
-      // Contract format: {items: [...], meta: {...}}
+      // Format B: {items: [...], meta: {...}}
       itemsList = json['items'] as List<dynamic>? ?? const [];
       final meta = json['meta'] as Map<String, dynamic>? ?? {};
       total = meta['total'] as int? ?? itemsList.length;
       page = meta['page'] as int? ?? 1;
       pageSize = _resolvePageSize(meta, fallback: itemsList.length);
     } else {
-      // Legacy format: {items: [...], total, page, page_size}
+      // Format A: {items: [...], total, skip, limit}
       itemsList = json['items'] as List<dynamic>? ?? const [];
       total = json['total'] as int? ?? itemsList.length;
-      page = json['page'] as int? ?? 1;
-      pageSize =
-          json['page_size'] as int? ??
+      final skip = json['skip'] as int? ?? 0;
+      final limit =
           json['limit'] as int? ??
+          json['page_size'] as int? ??
           itemsList.length;
+      pageSize = limit;
+      // Calculate page from skip and limit
+      page = limit > 0 ? (skip ~/ limit) + 1 : 1;
     }
 
     final items = itemsList

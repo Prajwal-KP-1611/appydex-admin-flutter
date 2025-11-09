@@ -81,7 +81,7 @@ class _AnalyticsDashboardState extends ConsumerState<AnalyticsDashboard> {
             // Additional filters placeholder
             Expanded(
               child: DropdownButtonFormField<String>(
-                value: _selectedFilter,
+                initialValue: _selectedFilter,
                 decoration: const InputDecoration(
                   labelText: 'Filter by',
                   border: OutlineInputBorder(),
@@ -124,9 +124,7 @@ class _AnalyticsDashboardState extends ConsumerState<AnalyticsDashboard> {
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 16),
-            const Text(
-              'TODO: Display top search terms with frequency charts',
-            ),
+            const Text('TODO: Display top search terms with frequency charts'),
             const SizedBox(height: 16),
             // Placeholder for chart
             Container(
@@ -169,9 +167,7 @@ class _AnalyticsDashboardState extends ConsumerState<AnalyticsDashboard> {
                 color: Colors.grey.shade100,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Center(
-                child: Text('CTR Metrics Chart Placeholder'),
-              ),
+              child: const Center(child: Text('CTR Metrics Chart Placeholder')),
             ),
           ],
         ),
@@ -250,9 +246,9 @@ class _AnalyticsDashboardState extends ConsumerState<AnalyticsDashboard> {
   void _exportCSV() {
     // TODO: Call POST /admin/analytics/export
     // Start job poller to track progress
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Starting CSV export...')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Starting CSV export...')));
   }
 
   void _checkExportStatus() {

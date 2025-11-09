@@ -116,9 +116,12 @@ class AdminSession {
     print('[AdminSession.fromJson] Email: $email');
 
     // Parse explicit permissions array from backend (optional)
-    final permissionsData = (userData?['permissions'] ?? json['permissions']) as List<dynamic>?;
+    final permissionsData =
+        (userData?['permissions'] ?? json['permissions']) as List<dynamic>?;
     final permissions = permissionsData?.map((p) => p.toString()).toList();
-    print('[AdminSession.fromJson] Explicit permissions: ${permissions?.length ?? 0} items');
+    print(
+      '[AdminSession.fromJson] Explicit permissions: ${permissions?.length ?? 0} items',
+    );
 
     return AdminSession(
       accessToken: (json['access'] ?? json['access_token']) as String? ?? '',
@@ -156,7 +159,7 @@ class AdminSession {
     'expires_at': expiresAt?.toIso8601String(),
   };
 
-  bool get isValid => accessToken.isNotEmpty && refreshToken.isNotEmpty;
+  bool get isValid => accessToken.isNotEmpty;
 
   bool get isExpired {
     if (expiresAt == null) return false;

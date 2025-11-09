@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/api_client.dart';
 import '../core/pagination.dart';
+import '../core/utils/idempotency.dart';
 import '../models/review.dart';
+import '../models/review_takedown_request.dart';
 import 'admin_exceptions.dart';
 
 /// Repository for review moderation
@@ -68,9 +70,7 @@ class ReviewsRepository {
       final response = await _client.requestAdmin<Map<String, dynamic>>(
         '/admin/reviews/$reviewId/approve',
         method: 'POST',
-        data: {
-          if (notes != null && notes.isNotEmpty) 'admin_notes': notes,
-        },
+        data: {if (notes != null && notes.isNotEmpty) 'admin_notes': notes},
       );
       return Review.fromJson(response.data ?? const {});
     } on DioException catch (error) {
@@ -88,9 +88,7 @@ class ReviewsRepository {
       final response = await _client.requestAdmin<Map<String, dynamic>>(
         '/admin/reviews/$reviewId/hide',
         method: 'POST',
-        data: {
-          'reason': reason,
-        },
+        data: {'reason': reason},
       );
       return Review.fromJson(response.data ?? const {});
     } on DioException catch (error) {
@@ -108,9 +106,7 @@ class ReviewsRepository {
       await _client.requestAdmin(
         '/admin/reviews/$reviewId',
         method: 'DELETE',
-        data: {
-          'reason': reason,
-        },
+        data: {'reason': reason},
       );
     } on DioException catch (error) {
       if (error.response?.statusCode == 404) {
@@ -127,11 +123,113 @@ class ReviewsRepository {
       final response = await _client.requestAdmin<Map<String, dynamic>>(
         '/admin/reviews/$reviewId/restore',
         method: 'POST',
+        options: idempotentOptions(),
       );
       return Review.fromJson(response.data ?? const {});
     } on DioException catch (error) {
       if (error.response?.statusCode == 404) {
         throw AdminEndpointMissing('admin/reviews/:id/restore');
+      }
+      rethrow;
+    }
+  }
+
+  /// List review takedown requests
+  /// GET /api/v1/admin/reviews/takedown-requests
+  ///
+  /// Query Parameters:
+  /// - page: Page number (default: 1)
+  /// - page_size: Items per page (default: 20)
+  /// - status: Filter by status (pending, approved, rejected)
+  /// - vendor_id: Filter by vendor ID
+  Future<Pagination<ReviewTakedownRequest>> listTakedownRequests({
+    int page = 1,
+    int pageSize = 20,
+    String? status,
+    int? vendorId,
+  }) async {
+    final params = <String, dynamic>{
+      'page': page,
+      'page_size': pageSize,
+      if (status != null && status.isNotEmpty) 'status': status,
+      if (vendorId != null) 'vendor_id': vendorId,
+    };
+
+    try {
+      final response = await _client.requestAdmin<Map<String, dynamic>>(
+        '/admin/reviews/takedown-requests',
+        queryParameters: params,
+      );
+      final body = response.data ?? <String, dynamic>{};
+      return Pagination.fromJson(
+        body,
+        (item) => ReviewTakedownRequest.fromJson(item),
+      );
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw AdminEndpointMissing('admin/reviews/takedown-requests');
+      }
+      rethrow;
+    }
+  }
+
+  /// Get takedown request details
+  /// GET /api/v1/admin/reviews/takedown-requests/{request_id}
+  Future<ReviewTakedownRequest> getTakedownRequest(int requestId) async {
+    try {
+      final response = await _client.requestAdmin<Map<String, dynamic>>(
+        '/admin/reviews/takedown-requests/$requestId',
+      );
+
+      if (response.data == null) {
+        throw AdminValidationError('Takedown request $requestId not found');
+      }
+
+      return ReviewTakedownRequest.fromJson(response.data!);
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw AdminEndpointMissing('admin/reviews/takedown-requests/:id');
+      }
+      rethrow;
+    }
+  }
+
+  /// Resolve a takedown request (approve or reject)
+  /// POST /api/v1/admin/reviews/takedown-requests/{request_id}/resolve
+  ///
+  /// Requires Idempotency-Key header to prevent duplicate resolutions.
+  Future<Map<String, dynamic>> resolveTakedownRequest({
+    required int requestId,
+    required ResolveTakedownRequest request,
+  }) async {
+    // Validate that actionIfApprove is provided when approving
+    if (request.decision == TakedownDecision.approve &&
+        request.actionIfApprove == null) {
+      throw ArgumentError(
+        'actionIfApprove is required when decision is approve',
+      );
+    }
+
+    try {
+      final response = await _client.requestAdmin<Map<String, dynamic>>(
+        '/admin/reviews/takedown-requests/$requestId/resolve',
+        method: 'POST',
+        data: request.toJson(),
+        options: idempotentOptions(),
+      );
+
+      return response.data ?? {};
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw AdminEndpointMissing(
+          'admin/reviews/takedown-requests/:id/resolve',
+        );
+      }
+      if (error.response?.statusCode == 400) {
+        final message =
+            error.response?.data['detail'] as String? ??
+            'Invalid resolution request';
+        throw AdminValidationError(message);
       }
       rethrow;
     }
@@ -203,9 +301,9 @@ class ReviewsNotifier extends StateNotifier<AsyncValue<Pagination<Review>>> {
 
 /// Provider for reviews state
 final reviewsProvider =
-    StateNotifierProvider<ReviewsNotifier, AsyncValue<Pagination<Review>>>(
-  (ref) {
-    final repository = ref.watch(reviewsRepositoryProvider);
-    return ReviewsNotifier(repository);
-  },
-);
+    StateNotifierProvider<ReviewsNotifier, AsyncValue<Pagination<Review>>>((
+      ref,
+    ) {
+      final repository = ref.watch(reviewsRepositoryProvider);
+      return ReviewsNotifier(repository);
+    });

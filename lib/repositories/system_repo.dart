@@ -53,6 +53,126 @@ class SystemRepository {
       rethrow;
     }
   }
+
+  /// Get system health status
+  /// GET /api/v1/admin/system/health
+  ///
+  /// Returns detailed health status for all system services including
+  /// PostgreSQL, Redis, MongoDB, and Celery.
+  Future<Map<String, dynamic>> getSystemHealth() async {
+    try {
+      final response = await _client.requestAdmin<Map<String, dynamic>>(
+        '/admin/system/health',
+      );
+      return response.data ?? {};
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw AdminEndpointMissing('admin/system/health');
+      }
+      rethrow;
+    }
+  }
+
+  /// List available backups
+  /// GET /api/v1/admin/system/backups
+  ///
+  /// Returns list of available backup files with metadata.
+  Future<List<Map<String, dynamic>>> listBackups() async {
+    try {
+      final response = await _client.requestAdmin<Map<String, dynamic>>(
+        '/admin/system/backups',
+      );
+      final backups = response.data?['backups'] as List<dynamic>? ?? const [];
+      return backups.whereType<Map<String, dynamic>>().toList();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw AdminEndpointMissing('admin/system/backups');
+      }
+      rethrow;
+    }
+  }
+
+  /// Trigger system backup
+  /// POST /api/v1/admin/system/backup
+  ///
+  /// Manually triggers a backup job. Requires super_admin permission.
+  ///
+  /// Parameters:
+  /// - target: Database to backup (postgres, redis, mongo, all)
+  /// - notes: Optional notes about the backup
+  ///
+  /// Returns job_id for tracking backup progress.
+  Future<String> triggerBackup({String target = 'all', String? notes}) async {
+    try {
+      final response = await _client.requestAdmin<Map<String, dynamic>>(
+        '/admin/system/backup',
+        method: 'POST',
+        data: {
+          'target': target,
+          if (notes != null && notes.isNotEmpty) 'notes': notes,
+        },
+      );
+      final jobId = response.data?['job_id'] as String?;
+      if (jobId == null || jobId.isEmpty) {
+        throw Exception('Missing job_id in backup response');
+      }
+      return jobId;
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw AdminEndpointMissing('admin/system/backup');
+      }
+      if (error.response?.statusCode == 403) {
+        throw AdminValidationError(
+          'Insufficient permissions (super_admin required)',
+        );
+      }
+      rethrow;
+    }
+  }
+
+  /// Restore from backup
+  /// POST /api/v1/admin/system/restore
+  ///
+  /// ⚠️ DANGEROUS OPERATION - Restores system from a backup.
+  /// Requires super_admin permission and explicit confirmation.
+  ///
+  /// Parameters:
+  /// - backupId: ID of the backup to restore
+  /// - confirm: Confirmation string (RESTORE_DATABASE_{backupId})
+  ///
+  /// Returns job_id for tracking restore progress.
+  Future<String> restoreFromBackup({required String backupId}) async {
+    final confirmString = 'RESTORE_DATABASE_$backupId';
+
+    try {
+      final response = await _client.requestAdmin<Map<String, dynamic>>(
+        '/admin/system/restore',
+        method: 'POST',
+        data: {'backup_id': backupId, 'confirm': confirmString},
+      );
+      final jobId = response.data?['job_id'] as String?;
+      if (jobId == null || jobId.isEmpty) {
+        throw Exception('Missing job_id in restore response');
+      }
+      return jobId;
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw AdminEndpointMissing('admin/system/restore');
+      }
+      if (error.response?.statusCode == 400) {
+        final message =
+            error.response?.data['message'] as String? ??
+            'Invalid restore request';
+        throw AdminValidationError(message);
+      }
+      if (error.response?.statusCode == 403) {
+        throw AdminValidationError(
+          'Insufficient permissions (super_admin required)',
+        );
+      }
+      rethrow;
+    }
+  }
 }
 
 /// Provider for SystemRepository

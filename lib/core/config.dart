@@ -4,13 +4,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Default production API origin.
 /// ⚠️ PRODUCTION CHANGE POINT: Backend is at 'https://api.appydex.co'
 /// For local development, using backend at http://localhost:16110
-const kDefaultApiBaseUrl = 'https://api.appydex.co';
+const kDefaultApiBaseUrl = 'http://localhost:16110';
 
 /// Resolve the current build flavor from the `APP_FLAVOR` dart define.
-const kAppFlavor = String.fromEnvironment('APP_FLAVOR', defaultValue: 'staging');
+const kAppFlavor = String.fromEnvironment(
+  'APP_FLAVOR',
+  defaultValue: 'staging',
+);
 
 /// API base URL from dart-define (required for prod)
-const kApiBaseUrlDefine = String.fromEnvironment('API_BASE_URL', defaultValue: '');
+const kApiBaseUrlDefine = String.fromEnvironment(
+  'API_BASE_URL',
+  defaultValue: '',
+);
 
 /// Mock mode from dart-define
 const kMockModeDefine = bool.fromEnvironment('MOCK_MODE', defaultValue: false);
@@ -21,7 +27,8 @@ const kAppVersion = String.fromEnvironment('APP_VERSION', defaultValue: 'dev');
 /// Validate production configuration at startup
 void assertProdConfig() {
   if (kAppFlavor == 'prod') {
-    if (kApiBaseUrlDefine.isEmpty || !kApiBaseUrlDefine.startsWith('https://')) {
+    if (kApiBaseUrlDefine.isEmpty ||
+        !kApiBaseUrlDefine.startsWith('https://')) {
       throw StateError(
         'Invalid prod API_BASE_URL: must be HTTPS. '
         'Build with: --dart-define=API_BASE_URL=https://api.appydex.com',
@@ -61,12 +68,12 @@ class AppConfig {
     String defaultBaseUrl = kDefaultApiBaseUrl,
   }) async {
     final preferences = await SharedPreferences.getInstance();
-    
+
     // Use dart-define API_BASE_URL if provided, otherwise use default
-    final effectiveBaseUrl = kApiBaseUrlDefine.isNotEmpty 
-        ? kApiBaseUrlDefine 
+    final effectiveBaseUrl = kApiBaseUrlDefine.isNotEmpty
+        ? kApiBaseUrlDefine
         : defaultBaseUrl;
-    
+
     return AppConfig._(
       flavor: flavor,
       preferences: preferences,

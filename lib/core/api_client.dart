@@ -141,7 +141,7 @@ class ApiClient {
         }
       }
     }
-    
+
     _dio.interceptors.add(
       QueuedInterceptorsWrapper(
         onRequest: _onRequest,
@@ -215,10 +215,7 @@ class ApiClient {
   }) {
     final key = idempotencyKey ?? _uuid.v4();
     final mergedOptions = (options ?? Options()).copyWith(
-      extra: {
-        ...?options?.extra,
-        'idempotencyKey': key,
-      },
+      extra: {...?options?.extra, 'idempotencyKey': key},
     );
     return requestAdmin<T>(
       path,
@@ -239,10 +236,7 @@ class ApiClient {
   }) {
     final key = idempotencyKey ?? _uuid.v4();
     final mergedOptions = (options ?? Options()).copyWith(
-      extra: {
-        ...?options?.extra,
-        'idempotencyKey': key,
-      },
+      extra: {...?options?.extra, 'idempotencyKey': key},
     );
     return requestAdmin<T>(
       path,
@@ -263,10 +257,7 @@ class ApiClient {
   }) {
     final key = idempotencyKey ?? _uuid.v4();
     final mergedOptions = (options ?? Options()).copyWith(
-      extra: {
-        ...?options?.extra,
-        'idempotencyKey': key,
-      },
+      extra: {...?options?.extra, 'idempotencyKey': key},
     );
     return requestAdmin<T>(
       path,
@@ -372,6 +363,26 @@ class ApiClient {
       _ref.read(lastTraceIdProvider.notifier).state = traceId;
     }
 
+    // Automatically unwrap backend {success: true, data: {...}} format
+    if (response.data is Map<String, dynamic>) {
+      final data = response.data as Map<String, dynamic>;
+      if (data.containsKey('success') && data.containsKey('data')) {
+        // Create a new response with unwrapped data instead of mutating
+        final unwrappedResponse = Response(
+          requestOptions: response.requestOptions,
+          data: data['data'],
+          statusCode: response.statusCode,
+          statusMessage: response.statusMessage,
+          headers: response.headers,
+          isRedirect: response.isRedirect,
+          redirects: response.redirects,
+          extra: response.extra,
+        );
+        handler.next(unwrappedResponse);
+        return;
+      }
+    }
+
     handler.next(response);
   }
 
@@ -446,7 +457,7 @@ class ApiClient {
 
   bool _shouldAttemptRefresh(DioException error) {
     final statusCode = error.response?.statusCode;
-  if (statusCode != 401) return false;
+    if (statusCode != 401) return false;
     final options = error.requestOptions;
     if (options.extra['skipAuth'] == true) return false;
     if (options.extra['isRefreshRequest'] == true) return false;
@@ -479,7 +490,9 @@ class ApiClient {
         // Cookie-based fallback (web): attempt refresh without body
         if (kIsWeb) {
           if (kDebugMode) {
-            debugPrint('[ApiClient] No refresh token stored – attempting cookie refresh');
+            debugPrint(
+              '[ApiClient] No refresh token stored – attempting cookie refresh',
+            );
           }
           response = await _dio.post<Map<String, dynamic>>(
             '/auth/refresh',
@@ -658,12 +671,12 @@ class ApiClient {
         return data['message'] as String;
       }
     }
-    
+
     // Fallback to DioException message
     if (error.message != null && error.message!.isNotEmpty) {
       return error.message!;
     }
-    
+
     return 'Something went wrong. Please try again.';
   }
 
