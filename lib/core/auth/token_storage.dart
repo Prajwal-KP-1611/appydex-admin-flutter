@@ -36,13 +36,14 @@ class TokenPair {
 }
 
 /// Handles persisting auth tokens.
-/// 
+///
 /// SECURITY NOTE (Web Platform):
-/// - Uses IN-MEMORY storage only on web (not persistent across refreshes)
-/// - Refresh tokens are never stored in localStorage/sessionStorage (XSS risk)
-/// - Production should use httpOnly cookies managed by backend
-/// - Current implementation: session-based auth (logout on tab close/refresh)
-/// 
+/// - Access tokens stored in localStorage (persistent across refreshes)
+/// - Refresh tokens stored in localStorage (enables token refresh after reload)
+/// - Production should use httpOnly cookies for maximum security
+/// - Current implementation: localStorage for admin panel convenience
+/// - IMPORTANT: Only use over HTTPS in production
+///
 /// Mobile platforms use flutter_secure_storage (iOS Keychain, Android KeyStore).
 class TokenStorage {
   TokenStorage({FlutterSecureStorage? secureStorage})
@@ -53,16 +54,28 @@ class TokenStorage {
   static const _accessKey = 'auth.access_token';
   static const _refreshKey = 'auth.refresh_token';
 
-  // In-memory cache (web-only persistence)
+  // In-memory cache for performance
   String? _cachedAccessToken;
   String? _cachedRefreshToken;
 
   Future<void> save(TokenPair tokens) async {
     _cachedAccessToken = tokens.accessToken;
     _cachedRefreshToken = tokens.refreshToken;
-    
-    // Only persist on native platforms (not web)
-    if (!kIsWeb) {
+
+    if (kIsWeb) {
+      // Web: persist to localStorage for cross-refresh persistence
+      try {
+        // Use flutter_secure_storage which falls back to web storage on web
+        await Future.wait([
+          _secureStorage.write(key: _accessKey, value: tokens.accessToken),
+          _secureStorage.write(key: _refreshKey, value: tokens.refreshToken),
+        ]);
+      } catch (e) {
+        debugPrint('[TokenStorage] Failed to persist tokens on web: $e');
+        // Tokens remain in memory cache
+      }
+    } else {
+      // Native: use secure storage (Keychain/KeyStore)
       await Future.wait([
         _secureStorage.write(key: _accessKey, value: tokens.accessToken),
         _secureStorage.write(key: _refreshKey, value: tokens.refreshToken),
@@ -83,40 +96,47 @@ class TokenStorage {
   }
 
   Future<String?> readAccessToken() async {
-    if (kIsWeb) {
-      // Web: memory-only
-      return _cachedAccessToken;
-    }
-    
-    // Native: read from secure storage with cache
+    // Return cached value if available
     if (_cachedAccessToken != null) return _cachedAccessToken;
-    final token = await _secureStorage.read(key: _accessKey);
-    _cachedAccessToken = token;
-    return token;
+
+    // Read from persistent storage (works on both web and native)
+    try {
+      final token = await _secureStorage.read(key: _accessKey);
+      _cachedAccessToken = token;
+      return token;
+    } catch (e) {
+      debugPrint('[TokenStorage] Failed to read access token: $e');
+      return null;
+    }
   }
 
   Future<String?> readRefreshToken() async {
-    if (kIsWeb) {
-      // Web: memory-only
-      return _cachedRefreshToken;
-    }
-    
-    // Native: read from secure storage with cache
+    // Return cached value if available
     if (_cachedRefreshToken != null) return _cachedRefreshToken;
-    final token = await _secureStorage.read(key: _refreshKey);
-    _cachedRefreshToken = token;
-    return token;
+
+    // Read from persistent storage (works on both web and native)
+    try {
+      final token = await _secureStorage.read(key: _refreshKey);
+      _cachedRefreshToken = token;
+      return token;
+    } catch (e) {
+      debugPrint('[TokenStorage] Failed to read refresh token: $e');
+      return null;
+    }
   }
 
   Future<void> clear() async {
     _cachedAccessToken = null;
     _cachedRefreshToken = null;
-    
-    if (!kIsWeb) {
+
+    // Clear from persistent storage on all platforms
+    try {
       await Future.wait([
         _secureStorage.delete(key: _accessKey),
         _secureStorage.delete(key: _refreshKey),
       ]);
+    } catch (e) {
+      debugPrint('[TokenStorage] Failed to clear tokens: $e');
     }
   }
 }
