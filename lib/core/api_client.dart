@@ -667,9 +667,34 @@ class ApiClient {
       return 'Access denied. You do not have permission to perform this action.';
     }
     if (statusCode == 422) {
-      // Extract validation message if available
-      if (data is Map<String, dynamic> && data['detail'] is String) {
-        return data['detail'] as String;
+      // Check if this is an auth-related 422 error
+      if (data is Map<String, dynamic>) {
+        final message = data['message'] as String?;
+        final errorData = data['error'] as Map<String, dynamic>?;
+        final errorMessage = errorData?['message'] as String?;
+
+        // If message contains auth-related keywords, treat as auth error
+        final authKeywords = [
+          'authorization',
+          'token',
+          'jwt',
+          'authentication',
+          'bearer',
+        ];
+        final fullMessage = '${message ?? ''} ${errorMessage ?? ''}'
+            .toLowerCase();
+
+        if (authKeywords.any((keyword) => fullMessage.contains(keyword))) {
+          return 'Authentication failed. Please log in again.';
+        }
+
+        // Extract validation message if available
+        if (data['detail'] is String) {
+          return data['detail'] as String;
+        }
+        if (message != null) {
+          return message;
+        }
       }
       return 'Invalid data submitted. Please check your inputs.';
     }
