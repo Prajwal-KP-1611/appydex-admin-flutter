@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/auth/auth_service.dart';
-import '../../core/config.dart';
 import '../../routes.dart';
 import '../../core/navigation/last_route.dart';
 
@@ -467,6 +466,12 @@ const _allNavItems = [
     AppRoute.reviews,
     'Reviews',
     Icons.rate_review_outlined,
+    section: 'engagement',
+  ),
+  _AdminNavItem(
+    AppRoute.feedback,
+    'Feedback',
+    Icons.feedback_outlined,
     section: 'engagement',
   ),
   _AdminNavItem(

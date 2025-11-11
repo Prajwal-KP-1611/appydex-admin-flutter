@@ -15,6 +15,8 @@ import 'features/auth/change_password_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/dashboard/dashboard_screen.dart';
 import 'features/diagnostics/diagnostics_screen.dart';
+import 'features/feedback/feedback_list_screen.dart';
+import 'features/feedback/feedback_detail_screen.dart';
 import 'features/plans/plans_list_screen.dart';
 import 'features/service_type_requests/requests_list_screen.dart';
 import 'features/services/services_list_screen.dart';
@@ -195,6 +197,8 @@ class _AppydexAdminAppState extends ConsumerState<AppydexAdminApp> {
           '/campaigns',
           '/reviews',
           '/payments',
+          '/feedback',
+          '/feedback/detail',
           '/reports',
           '/admins',
         ];
@@ -330,6 +334,23 @@ class _AppydexAdminAppState extends ConsumerState<AppydexAdminApp> {
             return MaterialPageRoute(
               settings: settings,
               builder: (_) => const VendorFlagsQueueScreen(),
+            );
+          case '/feedback':
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const FeedbackListScreen(),
+            );
+          case '/feedback/detail':
+            final feedbackId = settings.arguments as int?;
+            if (feedbackId == null) {
+              return MaterialPageRoute(
+                settings: settings,
+                builder: (_) => const FeedbackListScreen(),
+              );
+            }
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => FeedbackDetailScreen(feedbackId: feedbackId),
             );
           case '/reports':
             return MaterialPageRoute(

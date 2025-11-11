@@ -92,13 +92,5 @@ class UserActivityTab extends ConsumerWidget {
         ),
       ),
     );
-
-        ),
-      ),
-    );
-  }
-}
-      ],
-    );
   }
 }

@@ -93,12 +93,9 @@ class UserProfileTab extends StatelessWidget {
               const SizedBox(height: 4),
               Text(user.address!),
             ],
-            if (user.city != null)
-              _buildInfoRow('City', user.city!),
-            if (user.state != null)
-              _buildInfoRow('State', user.state!),
-            if (user.pincode != null)
-              _buildInfoRow('Pincode', user.pincode!),
+            if (user.city != null) _buildInfoRow('City', user.city!),
+            if (user.state != null) _buildInfoRow('State', user.state!),
+            if (user.pincode != null) _buildInfoRow('Pincode', user.pincode!),
           ],
         ),
       ),

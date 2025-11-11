@@ -17,6 +17,8 @@ enum AppRoute {
   campaigns('/campaigns'),
   reviews('/reviews'),
   payments('/payments'),
+  feedback('/feedback'),
+  feedbackDetail('/feedback/detail'),
   audit('/audit'),
   reports('/reports'),
   diagnostics('/diagnostics');
