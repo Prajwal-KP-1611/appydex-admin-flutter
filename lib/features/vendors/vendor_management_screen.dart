@@ -852,9 +852,7 @@ class _VendorNameCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Row(
       children: [
         Text(
           vendor.companyName,
@@ -862,8 +860,9 @@ class _VendorNameCell extends StatelessWidget {
             context,
           ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500),
         ),
+        const SizedBox(width: 8),
         Text(
-          vendor.slug,
+          '(${vendor.slug})',
           style: Theme.of(
             context,
           ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),

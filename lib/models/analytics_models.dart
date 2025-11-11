@@ -44,7 +44,9 @@ class ActiveUsersCount {
   const ActiveUsersCount({required this.activeUsers});
 
   factory ActiveUsersCount.fromJson(Map<String, dynamic> json) {
-    return ActiveUsersCount(activeUsers: (json['active_users'] as num).toInt());
+    return ActiveUsersCount(
+      activeUsers: (json['active_users'] as num?)?.toInt() ?? 0,
+    );
   }
 
   Map<String, dynamic> toJson() => {'active_users': activeUsers};
