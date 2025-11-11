@@ -10,8 +10,10 @@ class AdminScaffold extends ConsumerWidget {
   List<Widget> _buildSectionedNav(BuildContext context, AppRoute currentRoute) {
     final widgets = <Widget>[];
     // Filter out unavailable routes (like diagnostics in prod)
-    final availableNavItems = _allNavItems.where((item) => item.route.isAvailable).toList();
-    
+    final availableNavItems = _allNavItems
+        .where((item) => item.route.isAvailable)
+        .toList();
+
     // Dashboard
     widgets.add(_buildNavItem(context, availableNavItems.first, currentRoute));
     widgets.add(const SizedBox(height: 8));
@@ -20,21 +22,27 @@ class AdminScaffold extends ConsumerWidget {
 
     // Management
     widgets.add(section('MANAGEMENT'));
-    for (final item in availableNavItems.where((i) => i.section == 'management')) {
+    for (final item in availableNavItems.where(
+      (i) => i.section == 'management',
+    )) {
       widgets.add(_buildNavItem(context, item, currentRoute));
     }
     widgets.add(const SizedBox(height: 8));
 
     // Commerce
     widgets.add(section('COMMERCE'));
-    for (final item in availableNavItems.where((i) => i.section == 'commerce')) {
+    for (final item in availableNavItems.where(
+      (i) => i.section == 'commerce',
+    )) {
       widgets.add(_buildNavItem(context, item, currentRoute));
     }
     widgets.add(const SizedBox(height: 8));
 
     // Engagement
     widgets.add(section('ENGAGEMENT'));
-    for (final item in availableNavItems.where((i) => i.section == 'engagement')) {
+    for (final item in availableNavItems.where(
+      (i) => i.section == 'engagement',
+    )) {
       widgets.add(_buildNavItem(context, item, currentRoute));
     }
     widgets.add(const SizedBox(height: 8));
@@ -50,8 +58,10 @@ class AdminScaffold extends ConsumerWidget {
 
   List<Widget> _buildDrawerItems(BuildContext context, AppRoute currentRoute) {
     // Filter out unavailable routes (like diagnostics in prod)
-    final availableNavItems = _allNavItems.where((item) => item.route.isAvailable).toList();
-    
+    final availableNavItems = _allNavItems
+        .where((item) => item.route.isAvailable)
+        .toList();
+
     final items = <Widget>[];
     for (var i = 0; i < availableNavItems.length; i++) {
       final item = availableNavItems[i];
@@ -97,17 +107,14 @@ class AdminScaffold extends ConsumerWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final useRail = constraints.maxWidth >= 1000;
-        
+
         // Build environment chip
         final envChip = _buildEnvironmentChip(context);
-        
+
         final appBar = AppBar(
           title: Text(title ?? _labelFor(currentRoute)),
           actions: [
-            if (envChip != null) ...[
-              envChip,
-              const SizedBox(width: 8),
-            ],
+            if (envChip != null) ...[envChip, const SizedBox(width: 8)],
             ...actions,
           ],
         );
@@ -220,11 +227,9 @@ class AdminScaffold extends ConsumerWidget {
   Widget? _buildEnvironmentChip(BuildContext context) {
     // Hide in production
     if (kAppFlavor == 'prod') return null;
-    
-    final color = kAppFlavor == 'staging' 
-        ? Colors.orange 
-        : Colors.purple;
-    
+
+    final color = kAppFlavor == 'staging' ? Colors.orange : Colors.purple;
+
     return Chip(
       label: Text(
         kAppFlavor.toUpperCase(),
@@ -355,7 +360,7 @@ class AdminScaffold extends ConsumerWidget {
               onPressed: () async {
                 try {
                   debugPrint('[Logout] Button clicked');
-                  
+
                   if (!context.mounted) {
                     debugPrint('[Logout] Context not mounted, aborting');
                     return;
@@ -375,10 +380,7 @@ class AdminScaffold extends ConsumerWidget {
 
                   // Clear entire navigation stack and go to login
                   debugPrint('[Logout] Navigating to login...');
-                  navigator.pushNamedAndRemoveUntil(
-                    '/login',
-                    (route) => false,
-                  );
+                  navigator.pushNamedAndRemoveUntil('/login', (route) => false);
                   debugPrint('[Logout] Navigation initiated');
                 } catch (e, stack) {
                   debugPrint('[Logout] Error during logout: $e');
@@ -425,8 +427,14 @@ const _allNavItems = [
     section: 'management',
   ),
   _AdminNavItem(
-    AppRoute.vendors,
-    'Vendors',
+    AppRoute.vendorOnboarding,
+    'Vendor Onboarding',
+    Icons.how_to_reg_outlined,
+    section: 'management',
+  ),
+  _AdminNavItem(
+    AppRoute.vendorManagement,
+    'Vendor Management',
     Icons.storefront_outlined,
     section: 'management',
   ),

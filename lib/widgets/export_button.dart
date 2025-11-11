@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../core/api_client.dart';
 import 'job_poller.dart';
@@ -29,11 +30,7 @@ class ExportButton extends ConsumerStatefulWidget {
   ConsumerState<ExportButton> createState() => _ExportButtonState();
 }
 
-enum ExportButtonVariant {
-  filled,
-  outlined,
-  text,
-}
+enum ExportButtonVariant { filled, outlined, text }
 
 class _ExportButtonState extends ConsumerState<ExportButton> {
   String? _activeJobId;
@@ -75,7 +72,7 @@ class _ExportButtonState extends ConsumerState<ExportButton> {
 
   void _handleComplete(JobResult result) {
     widget.onExportComplete?.call(result);
-    
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -83,9 +80,14 @@ class _ExportButtonState extends ConsumerState<ExportButton> {
           action: result.hasDownload
               ? SnackBarAction(
                   label: 'Download',
-                  onPressed: () {
-                    // TODO: Open download URL
-                    debugPrint('Download: ${result.downloadUrl}');
+                  onPressed: () async {
+                    final uri = Uri.parse(result.downloadUrl!);
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(
+                        uri,
+                        mode: LaunchMode.externalApplication,
+                      );
+                    }
                   },
                 )
               : null,
@@ -114,10 +116,7 @@ class _ExportButtonState extends ConsumerState<ExportButton> {
         onError: _handleError,
         builder: (context, result) {
           if (result == null) {
-            return _buildButton(
-              isLoading: true,
-              label: 'Starting...',
-            );
+            return _buildButton(isLoading: true, label: 'Starting...');
           }
 
           if (result.isComplete) {

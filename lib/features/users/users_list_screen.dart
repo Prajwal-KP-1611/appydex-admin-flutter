@@ -23,6 +23,7 @@ class UsersListScreen extends ConsumerStatefulWidget {
 class _UsersListScreenState extends ConsumerState<UsersListScreen> {
   final _searchController = TextEditingController();
   String? _statusFilter;
+  int _pageSize = 20;
 
   @override
   void dispose() {
@@ -105,6 +106,29 @@ class _UsersListScreenState extends ConsumerState<UsersListScreen> {
                             onChanged: (value) {
                               setState(() => _statusFilter = value);
                               _loadUsers();
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        SizedBox(
+                          width: 150,
+                          child: DropdownButtonFormField<int>(
+                            initialValue: _pageSize,
+                            decoration: const InputDecoration(
+                              labelText: 'Records per page',
+                              border: OutlineInputBorder(),
+                            ),
+                            items: const [
+                              DropdownMenuItem(value: 10, child: Text('10')),
+                              DropdownMenuItem(value: 20, child: Text('20')),
+                              DropdownMenuItem(value: 50, child: Text('50')),
+                              DropdownMenuItem(value: 100, child: Text('100')),
+                            ],
+                            onChanged: (value) {
+                              if (value != null) {
+                                setState(() => _pageSize = value);
+                                _loadUsers();
+                              }
                             },
                           ),
                         ),
@@ -340,176 +364,199 @@ class _UsersListScreenState extends ConsumerState<UsersListScreen> {
                           Expanded(
                             child: Card(
                               child: SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: DataTable(
-                                  columnSpacing: 24,
-                                  headingRowColor: WidgetStateProperty.all(
-                                    Theme.of(
-                                      context,
-                                    ).colorScheme.surfaceContainerHighest,
-                                  ),
-                                  columns: const [
-                                    DataColumn(label: Text('Email')),
-                                    DataColumn(label: Text('Name')),
-                                    DataColumn(label: Text('Status')),
-                                    DataColumn(label: Text('Trust Score')),
-                                    DataColumn(label: Text('Bookings')),
-                                    DataColumn(label: Text('Total Spent')),
-                                    DataColumn(label: Text('Disputes')),
-                                    DataColumn(label: Text('Last Active')),
-                                    DataColumn(label: Text('Created')),
-                                    DataColumn(label: Text('Actions')),
-                                  ],
-                                  rows: items.map((user) {
-                                    return DataRow(
-                                      cells: [
-                                        DataCell(
-                                          InkWell(
-                                            onTap: () {
-                                              Navigator.of(context).push(
-                                                MaterialPageRoute(
-                                                  builder: (_) =>
-                                                      UserDetailScreen(
-                                                        userId: user.id,
-                                                      ),
-                                                ),
-                                              );
-                                            },
-                                            child: Text(
-                                              user.email,
+                                child: SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: DataTable(
+                                    columnSpacing: 24,
+                                    headingRowColor: WidgetStateProperty.all(
+                                      Theme.of(
+                                        context,
+                                      ).colorScheme.surfaceContainerHighest,
+                                    ),
+                                    columns: const [
+                                      DataColumn(label: Text('SL No.')),
+                                      DataColumn(label: Text('Email')),
+                                      DataColumn(label: Text('Name')),
+                                      DataColumn(label: Text('Status')),
+                                      DataColumn(label: Text('Trust Score')),
+                                      DataColumn(label: Text('Bookings')),
+                                      DataColumn(label: Text('Total Spent')),
+                                      DataColumn(label: Text('Disputes')),
+                                      DataColumn(label: Text('Last Active')),
+                                      DataColumn(label: Text('Created')),
+                                      DataColumn(label: Text('Actions')),
+                                    ],
+                                    rows: items.asMap().entries.map((entry) {
+                                      final index = entry.key;
+                                      final user = entry.value;
+                                      // Calculate actual serial number based on pagination
+                                      final serialNumber =
+                                          (pagination.page - 1) * _pageSize +
+                                          index +
+                                          1;
+                                      return DataRow(
+                                        cells: [
+                                          DataCell(
+                                            Text(
+                                              '$serialNumber',
                                               style: const TextStyle(
-                                                color: Colors.blue,
-                                                decoration:
-                                                    TextDecoration.underline,
+                                                fontWeight: FontWeight.w500,
                                               ),
                                             ),
                                           ),
-                                        ),
-                                        DataCell(
-                                          Text(
-                                            user.name ?? '—',
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                        DataCell(
-                                          _buildStatusChip(
-                                            user.accountStatus ?? 'active',
-                                          ),
-                                        ),
-                                        DataCell(
-                                          _buildTrustScoreChip(user.trustScore),
-                                        ),
-                                        DataCell(
-                                          Text(
-                                            '${user.totalBookings ?? user.bookingCount ?? 0}',
-                                          ),
-                                        ),
-                                        DataCell(
-                                          Text(
-                                            _formatCurrency(user.totalSpent),
-                                          ),
-                                        ),
-                                        DataCell(
-                                          _buildDisputesBadge(
-                                            user.openDisputes ?? 0,
-                                          ),
-                                        ),
-                                        DataCell(
-                                          Text(
-                                            _formatDateTime(
-                                              user.lastActivityAt,
+                                          DataCell(
+                                            InkWell(
+                                              onTap: () {
+                                                Navigator.of(context).push(
+                                                  MaterialPageRoute(
+                                                    builder: (_) =>
+                                                        UserDetailScreen(
+                                                          userId: user.id,
+                                                        ),
+                                                  ),
+                                                );
+                                              },
+                                              child: Text(
+                                                user.email,
+                                                style: const TextStyle(
+                                                  color: Colors.blue,
+                                                  decoration:
+                                                      TextDecoration.underline,
+                                                ),
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                        DataCell(
-                                          Text(_formatDateTime(user.createdAt)),
-                                        ),
-                                        DataCell(
-                                          Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              PopupMenuButton<String>(
-                                                tooltip: 'Actions',
-                                                onSelected: (value) =>
-                                                    _handleAction(
-                                                      context,
-                                                      ref,
-                                                      value,
-                                                      user,
-                                                    ),
-                                                itemBuilder: (context) => [
-                                                  const PopupMenuItem(
-                                                    value: 'view',
-                                                    child: Row(
-                                                      children: [
-                                                        Icon(
-                                                          Icons.visibility,
-                                                          size: 18,
-                                                        ),
-                                                        SizedBox(width: 8),
-                                                        Text('View Details'),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                  const PopupMenuDivider(),
-                                                  if (!user.isSuspended)
+                                          DataCell(
+                                            Text(
+                                              user.name ?? '—',
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          DataCell(
+                                            _buildStatusChip(
+                                              user.accountStatus ?? 'active',
+                                            ),
+                                          ),
+                                          DataCell(
+                                            _buildTrustScoreChip(
+                                              user.trustScore,
+                                            ),
+                                          ),
+                                          DataCell(
+                                            Text(
+                                              '${user.totalBookings ?? user.bookingCount ?? 0}',
+                                            ),
+                                          ),
+                                          DataCell(
+                                            Text(
+                                              _formatCurrency(user.totalSpent),
+                                            ),
+                                          ),
+                                          DataCell(
+                                            _buildDisputesBadge(
+                                              user.openDisputes ?? 0,
+                                            ),
+                                          ),
+                                          DataCell(
+                                            Text(
+                                              _formatDateTime(
+                                                user.lastActivityAt,
+                                              ),
+                                            ),
+                                          ),
+                                          DataCell(
+                                            Text(
+                                              _formatDateTime(user.createdAt),
+                                            ),
+                                          ),
+                                          DataCell(
+                                            Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                PopupMenuButton<String>(
+                                                  tooltip: 'Actions',
+                                                  onSelected: (value) =>
+                                                      _handleAction(
+                                                        context,
+                                                        ref,
+                                                        value,
+                                                        user,
+                                                      ),
+                                                  itemBuilder: (context) => [
                                                     const PopupMenuItem(
-                                                      value: 'suspend',
+                                                      value: 'view',
+                                                      child: Row(
+                                                        children: [
+                                                          Icon(
+                                                            Icons.visibility,
+                                                            size: 18,
+                                                          ),
+                                                          SizedBox(width: 8),
+                                                          Text('View Details'),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                    const PopupMenuDivider(),
+                                                    if (!user.isSuspended)
+                                                      const PopupMenuItem(
+                                                        value: 'suspend',
+                                                        child: Row(
+                                                          children: [
+                                                            Icon(
+                                                              Icons
+                                                                  .pause_circle_outline,
+                                                              size: 18,
+                                                            ),
+                                                            SizedBox(width: 8),
+                                                            Text('Suspend'),
+                                                          ],
+                                                        ),
+                                                      )
+                                                    else
+                                                      const PopupMenuItem(
+                                                        value: 'unsuspend',
+                                                        child: Row(
+                                                          children: [
+                                                            Icon(
+                                                              Icons
+                                                                  .play_circle_outline,
+                                                              size: 18,
+                                                            ),
+                                                            SizedBox(width: 8),
+                                                            Text('Unsuspend'),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    const PopupMenuDivider(),
+                                                    const PopupMenuItem(
+                                                      value: 'delete',
                                                       child: Row(
                                                         children: [
                                                           Icon(
                                                             Icons
-                                                                .pause_circle_outline,
+                                                                .delete_outline,
                                                             size: 18,
-                                                          ),
-                                                          SizedBox(width: 8),
-                                                          Text('Suspend'),
-                                                        ],
-                                                      ),
-                                                    )
-                                                  else
-                                                    const PopupMenuItem(
-                                                      value: 'unsuspend',
-                                                      child: Row(
-                                                        children: [
-                                                          Icon(
-                                                            Icons
-                                                                .play_circle_outline,
-                                                            size: 18,
-                                                          ),
-                                                          SizedBox(width: 8),
-                                                          Text('Unsuspend'),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  const PopupMenuDivider(),
-                                                  const PopupMenuItem(
-                                                    value: 'delete',
-                                                    child: Row(
-                                                      children: [
-                                                        Icon(
-                                                          Icons.delete_outline,
-                                                          size: 18,
-                                                          color: Colors.red,
-                                                        ),
-                                                        SizedBox(width: 8),
-                                                        Text(
-                                                          'Delete User',
-                                                          style: TextStyle(
                                                             color: Colors.red,
                                                           ),
-                                                        ),
-                                                      ],
+                                                          SizedBox(width: 8),
+                                                          Text(
+                                                            'Delete User',
+                                                            style: TextStyle(
+                                                              color: Colors.red,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
                                                     ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
                                           ),
-                                        ),
-                                      ],
-                                    );
-                                  }).toList(),
+                                        ],
+                                      );
+                                    }).toList(),
+                                  ),
                                 ),
                               ),
                             ),
@@ -565,6 +612,7 @@ class _UsersListScreenState extends ConsumerState<UsersListScreen> {
         .read(endUsersProvider.notifier)
         .loadUsers(
           page: 1,
+          pageSize: _pageSize,
           search: search.isEmpty ? null : search,
           status: _statusFilter,
         );

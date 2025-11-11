@@ -9,7 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class _FakeVendorRepository implements VendorRepository {
+class _FakeVendorRepository extends VendorRepository {
+  _FakeVendorRepository() : super(null as dynamic);
   final Pagination<Vendor> _page = Pagination<Vendor>(
     items: [
       Vendor(

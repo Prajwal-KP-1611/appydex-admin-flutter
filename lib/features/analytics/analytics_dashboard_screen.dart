@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/shared/admin_sidebar.dart';
 import '../../providers/analytics_dashboard_provider.dart';
+import '../../repositories/analytics_repo.dart';
 import '../../widgets/export_button.dart';
 import '../../routes.dart';
 import '../../core/permissions.dart';
@@ -76,6 +77,14 @@ class AnalyticsDashboardScreen extends ConsumerWidget {
                   Expanded(child: _TopSearchesCard()),
                   const SizedBox(width: 16),
                   Expanded(child: _CtrCard()),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(child: _PlatformHitsCard(state: state)),
+                  const SizedBox(width: 16),
+                  Expanded(child: _ActiveUsersCard()),
                 ],
               ),
             ],
@@ -191,6 +200,129 @@ class _CtrCard extends ConsumerWidget {
                   ],
                 ),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Widget to display platform hits analytics
+class _PlatformHitsCard extends ConsumerWidget {
+  const _PlatformHitsCard({required this.state});
+  final AnalyticsDashboardState state;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final dateRange = DateRange(startDate: state.start, endDate: state.end);
+    final platformHitsAsync = ref.watch(platformHitsProvider(dateRange));
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Platform Hits',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            platformHitsAsync.when(
+              data: (response) {
+                if (response.platformHits.isEmpty) {
+                  return const Text('No data available');
+                }
+                return Column(
+                  children: [
+                    for (final hit in response.platformHits)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                hit.platform,
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              hit.count.toString(),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                );
+              },
+              loading: () => const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(12),
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+              error: (error, stack) => Text(
+                'Error: ${error.toString()}',
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Widget to display active users count
+class _ActiveUsersCard extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final activeUsersAsync = ref.watch(activeUsersProvider);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Active Users',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            activeUsersAsync.when(
+              data: (count) => Column(
+                children: [
+                  Text(
+                    count.activeUsers.toString(),
+                    style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'users currently active',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ],
+              ),
+              loading: () => const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(12),
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+              error: (error, stack) => Text(
+                'Error: ${error.toString()}',
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
           ],
         ),
       ),

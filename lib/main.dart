@@ -20,6 +20,8 @@ import 'features/service_type_requests/requests_list_screen.dart';
 import 'features/services/services_list_screen.dart';
 import 'features/subscriptions/subscriptions_admin_screen.dart';
 import 'features/vendors/vendor_detail_screen.dart';
+import 'features/vendors/vendor_onboarding_screen.dart';
+import 'features/vendors/vendor_management_screen.dart';
 import 'features/vendors/vendors_list_screen.dart';
 import 'features/users/users_list_screen.dart';
 import 'features/payments/payments_list_screen.dart';
@@ -34,7 +36,10 @@ import 'routes.dart';
 const _sentryDsn = String.fromEnvironment('SENTRY_DSN', defaultValue: '');
 
 // API base override for diagnostics (optional)
-const _apiBaseOverride = String.fromEnvironment('API_BASE_URL', defaultValue: '');
+const _apiBaseOverride = String.fromEnvironment(
+  'API_BASE_URL',
+  defaultValue: '',
+);
 
 Future<void> main() async {
   await SentryFlutter.init(
@@ -63,7 +68,9 @@ Future<void> main() async {
         await config.setApiBaseUrl(_apiBaseOverride);
         // Debug only (avoid print spam in prod) – flagged by analyzer but acceptable here.
         // ignore: avoid_print
-        print('🌐 API Base URL overridden via dart define: ${config.apiBaseUrl}');
+        print(
+          '🌐 API Base URL overridden via dart define: ${config.apiBaseUrl}',
+        );
       } else {
         // ignore: avoid_print
         print('🌐 API Base URL resolved: ${config.apiBaseUrl}');
@@ -165,7 +172,7 @@ class _AppydexAdminAppState extends ConsumerState<AppydexAdminApp> {
       title: 'AppyDex Admin',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.light,
       initialRoute: initialRoute,
       navigatorObservers: [appRouteObserver],
       onGenerateRoute: (settings) {
@@ -175,6 +182,8 @@ class _AppydexAdminAppState extends ConsumerState<AppydexAdminApp> {
           '/dashboard',
           '/analytics',
           '/vendors',
+          '/vendors/onboarding',
+          '/vendors/management',
           '/vendors/detail',
           '/subscriptions',
           '/audit',
@@ -237,6 +246,16 @@ class _AppydexAdminAppState extends ConsumerState<AppydexAdminApp> {
               settings: settings,
               builder: (_) =>
                   VendorsListScreen(initialArguments: settings.arguments),
+            );
+          case '/vendors/onboarding':
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const VendorOnboardingScreen(),
+            );
+          case '/vendors/management':
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const VendorManagementScreen(),
             );
           case '/vendors/detail':
             final args = settings.arguments as VendorDetailArgs?;

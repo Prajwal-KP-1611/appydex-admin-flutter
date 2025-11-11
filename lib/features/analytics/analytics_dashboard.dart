@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../shared/admin_sidebar.dart';
 import '../../routes.dart';
+import '../../core/api_client.dart';
 
 /// Analytics Dashboard
 /// Displays Top Searches, CTR metrics, and Export functionality
@@ -112,7 +113,6 @@ class _AnalyticsDashboardState extends ConsumerState<AnalyticsDashboard> {
   }
 
   Widget _buildTopSearchesSection() {
-    // TODO: Wire to GET /admin/analytics/top_searches
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -124,18 +124,40 @@ class _AnalyticsDashboardState extends ConsumerState<AnalyticsDashboard> {
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 16),
-            const Text('TODO: Display top search terms with frequency charts'),
-            const SizedBox(height: 16),
-            // Placeholder for chart
-            Container(
-              height: 300,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Center(
-                child: Text('Top Searches Chart Placeholder'),
-              ),
+            FutureBuilder<List<Map<String, dynamic>>>(
+              future: _fetchTopSearches(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      'Endpoint not available: /admin/analytics/top_searches',
+                      style: TextStyle(color: Colors.grey.shade600),
+                    ),
+                  );
+                }
+                final searches = snapshot.data ?? [];
+                if (searches.isEmpty) {
+                  return const Center(child: Text('No search data available'));
+                }
+                return ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: searches.length.clamp(0, 10),
+                  itemBuilder: (context, index) {
+                    final item = searches[index];
+                    final term = item['term'] as String? ?? '';
+                    final count = item['count'] as int? ?? 0;
+                    return ListTile(
+                      leading: CircleAvatar(child: Text('${index + 1}')),
+                      title: Text(term),
+                      trailing: Text('$count searches'),
+                    );
+                  },
+                );
+              },
             ),
           ],
         ),
@@ -143,8 +165,24 @@ class _AnalyticsDashboardState extends ConsumerState<AnalyticsDashboard> {
     );
   }
 
+  Future<List<Map<String, dynamic>>> _fetchTopSearches() async {
+    try {
+      final client = ref.read(apiClientProvider);
+      final response = await client.requestAdmin<Map<String, dynamic>>(
+        '/admin/analytics/top_searches',
+        queryParameters: {'limit': 10},
+      );
+      final data = response.data;
+      if (data != null && data['searches'] is List) {
+        return (data['searches'] as List).cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
   Widget _buildCTRMetricsSection() {
-    // TODO: Wire to GET /admin/analytics/ctr
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -156,23 +194,85 @@ class _AnalyticsDashboardState extends ConsumerState<AnalyticsDashboard> {
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 16),
-            const Text(
-              'TODO: Display CTR metrics over time with trend analysis',
-            ),
-            const SizedBox(height: 16),
-            // Placeholder for chart
-            Container(
-              height: 300,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Center(child: Text('CTR Metrics Chart Placeholder')),
+            FutureBuilder<Map<String, dynamic>>(
+              future: _fetchCTRMetrics(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      'Endpoint not available: /admin/analytics/ctr',
+                      style: TextStyle(color: Colors.grey.shade600),
+                    ),
+                  );
+                }
+                final data = snapshot.data ?? {};
+                final overallCTR =
+                    (data['overall_ctr'] as num?)?.toDouble() ?? 0.0;
+                final impressions = data['impressions'] as int? ?? 0;
+                final clicks = data['clicks'] as int? ?? 0;
+
+                return Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildMetricCard(
+                          'Overall CTR',
+                          '${(overallCTR * 100).toStringAsFixed(2)}%',
+                        ),
+                        _buildMetricCard('Impressions', '$impressions'),
+                        _buildMetricCard('Clicks', '$clicks'),
+                      ],
+                    ),
+                    if (data['time_series'] != null) ...[
+                      const SizedBox(height: 16),
+                      const Text('Time series data available for charting'),
+                    ],
+                  ],
+                );
+              },
             ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildMetricCard(String label, String value) {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Text(value, style: Theme.of(context).textTheme.headlineMedium),
+            const SizedBox(height: 4),
+            Text(label, style: Theme.of(context).textTheme.bodySmall),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<Map<String, dynamic>> _fetchCTRMetrics() async {
+    try {
+      final client = ref.read(apiClientProvider);
+      final response = await client.requestAdmin<Map<String, dynamic>>(
+        '/admin/analytics/ctr',
+        queryParameters: {
+          'from_date': DateTime.now()
+              .subtract(const Duration(days: 30))
+              .toIso8601String(),
+          'to_date': DateTime.now().toIso8601String(),
+        },
+      );
+      return response.data ?? {};
+    } catch (e) {
+      return {};
+    }
   }
 
   Widget _buildExportSection() {

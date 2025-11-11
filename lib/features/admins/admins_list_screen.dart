@@ -114,22 +114,22 @@ class _AdminsListScreenState extends ConsumerState<AdminsListScreen> {
     final adminUsers = ref.watch(adminUsersProvider);
 
     // Debug logging
-    print(
+    debugPrint(
       '[AdminsListScreen] Session: ${session?.email}, Role: ${currentRole?.displayName}, Roles: ${session?.roles.map((r) => r.displayName).join(", ")}',
     );
     final hasSuperAdminRole =
         session?.roles.contains(AdminRole.superAdmin) == true;
-    print(
+    debugPrint(
       '[AdminsListScreen] hasSuperAdminRole (any role): $hasSuperAdminRole',
     );
-    print(
+    debugPrint(
       '[AdminsListScreen] Is Super Admin (active role): ${currentRole == AdminRole.superAdmin}',
     );
 
     // Only super_admin can access this screen
     final isSuper = hasSuperAdminRole || currentRole == AdminRole.superAdmin;
     if (!isSuper) {
-      print(
+      debugPrint(
         '[AdminsListScreen] Access DENIED for role: ${currentRole?.displayName}',
       );
       return AdminScaffold(
@@ -162,7 +162,7 @@ class _AdminsListScreenState extends ConsumerState<AdminsListScreen> {
       );
     }
 
-    print(
+    debugPrint(
       '[AdminsListScreen] Access GRANTED (super admin privileges detected)',
     );
 

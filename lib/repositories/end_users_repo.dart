@@ -182,20 +182,27 @@ class EndUsersRepository {
     }
 
     try {
+      print(
+        '📊 [EndUsers] Requesting page=$page, pageSize=$pageSize, useMockData=$useMockData',
+      );
       final response = await _apiClient.requestAdmin<Map<String, dynamic>>(
         '/admin/users',
         queryParameters: {
           'page': page,
-          'limit': pageSize,
+          'page_size': pageSize,
           if (search != null && search.isNotEmpty) 'search': search,
           if (status != null && status.isNotEmpty) 'status': status,
         },
       );
 
-      return Pagination.fromJson(
+      final result = Pagination.fromJson(
         response.data ?? {},
         (json) => EndUser.fromJson(json),
       );
+      print(
+        '📊 [EndUsers] Response: ${result.items.length} items, ${result.total} total, page ${result.page}, pageSize ${result.pageSize}',
+      );
+      return result;
     } catch (e) {
       // Check if this is a 422 validation error for missing Authorization
       final is422Auth =
@@ -229,6 +236,9 @@ class EndUsersRepository {
     String? search,
     String? status,
   }) {
+    print(
+      '🧪 [EndUsers Mock] Generating mock data: page=$page, pageSize=$pageSize, search=$search, status=$status',
+    );
     // Generate 79 fake users (matching backend count)
     final allUsers = List.generate(79, (i) {
       final id = i + 1;
@@ -270,6 +280,10 @@ class EndUsersRepository {
     final startIndex = (page - 1) * pageSize;
     final endIndex = (startIndex + pageSize).clamp(0, total);
     final pageItems = filtered.sublist(startIndex.clamp(0, total), endIndex);
+
+    print(
+      '🧪 [EndUsers Mock] Returning ${pageItems.length} items (total: $total, page: $page, pageSize: $pageSize)',
+    );
 
     return Pagination(
       items: pageItems,
@@ -903,13 +917,18 @@ class EndUsersNotifier extends StateNotifier<AsyncValue<Pagination<EndUser>>> {
 
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
-      return _repository.list(
-        page: _currentPage,
-        pageSize: _pageSize,
-        search: _search,
-        status: _status,
-        useMockData: _useMockData,
-      );
+      try {
+        return await _repository.list(
+          page: _currentPage,
+          pageSize: _pageSize,
+          search: _search,
+          status: _status,
+          useMockData: _useMockData,
+        );
+      } on AdminEndpointMissing catch (_) {
+        // Backend endpoint is missing - rethrow to show error to user
+        rethrow;
+      }
     });
   }
 

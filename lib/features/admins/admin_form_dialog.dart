@@ -23,6 +23,7 @@ class _AdminFormDialogState extends ConsumerState<AdminFormDialog> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _nameController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
@@ -40,6 +41,7 @@ class _AdminFormDialogState extends ConsumerState<AdminFormDialog> {
       final admin = widget.admin!;
       _emailController.text = admin.email;
       _nameController.text = admin.name ?? '';
+      _phoneController.text = admin.phoneNumber ?? '';
       _selectedRole = admin.roles.isNotEmpty
           ? admin.roles.first
           : AdminRole.vendorAdmin;
@@ -50,6 +52,7 @@ class _AdminFormDialogState extends ConsumerState<AdminFormDialog> {
   void dispose() {
     _emailController.dispose();
     _nameController.dispose();
+    _phoneController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
@@ -71,12 +74,15 @@ class _AdminFormDialogState extends ConsumerState<AdminFormDialog> {
 
     try {
       if (_isEditing) {
-        // UPDATE: Only send email, name, and password (if provided)
+        // UPDATE: Only send email, name, phone, and password (if provided)
         // Role changes must be done via separate role management endpoints
         final updateRequest = AdminUserUpdateRequest(
           email: _emailController.text.trim(),
           name: _nameController.text.trim().isNotEmpty
               ? _nameController.text.trim()
+              : null,
+          phoneNumber: _phoneController.text.trim().isNotEmpty
+              ? _phoneController.text.trim()
               : null,
           // Only include password if it was actually entered
           password: _passwordController.text.isNotEmpty
@@ -276,6 +282,31 @@ class _AdminFormDialogState extends ConsumerState<AdminFormDialog> {
                             hintText: 'John Doe',
                             prefixIcon: Icon(Icons.person_outline),
                           ),
+                          enabled: !_isLoading,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Phone Number
+                        TextFormField(
+                          controller: _phoneController,
+                          decoration: const InputDecoration(
+                            labelText: 'Phone Number',
+                            hintText: '+91 98765 43210',
+                            prefixIcon: Icon(Icons.phone_outlined),
+                          ),
+                          keyboardType: TextInputType.phone,
+                          validator: (value) {
+                            if (value != null && value.trim().isNotEmpty) {
+                              // Basic phone validation (10-15 digits with optional +)
+                              final phoneRegex = RegExp(
+                                r'^\+?[\d\s\-()]{10,15}$',
+                              );
+                              if (!phoneRegex.hasMatch(value.trim())) {
+                                return 'Enter a valid phone number';
+                              }
+                            }
+                            return null;
+                          },
                           enabled: !_isLoading,
                         ),
                         const SizedBox(height: 16),

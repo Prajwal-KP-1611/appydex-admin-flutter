@@ -13,7 +13,7 @@ class TokenManager {
   TokenManager({this.refreshInterval = const Duration(minutes: 10)});
 
   /// How often to refresh tokens proactively.
-  /// Default: 10 minutes (safe for 15-minute token expiry)
+  /// Default: 10 minutes (safe for 15-minute token expiry, provides 1.5x buffer)
   final Duration refreshInterval;
 
   Timer? _refreshTimer;

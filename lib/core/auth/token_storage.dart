@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Simple value object for holding access and refresh tokens.
 class TokenPair {
@@ -63,13 +64,14 @@ class TokenStorage {
     _cachedRefreshToken = tokens.refreshToken;
 
     if (kIsWeb) {
-      // Web: persist to localStorage for cross-refresh persistence
+      // Web: Use SharedPreferences (same as AuthService for consistency)
       try {
-        // Use flutter_secure_storage which falls back to web storage on web
+        final prefs = await SharedPreferences.getInstance();
         await Future.wait([
-          _secureStorage.write(key: _accessKey, value: tokens.accessToken),
-          _secureStorage.write(key: _refreshKey, value: tokens.refreshToken),
+          prefs.setString(_accessKey, tokens.accessToken),
+          prefs.setString(_refreshKey, tokens.refreshToken),
         ]);
+        debugPrint('[TokenStorage] Tokens saved to web storage');
       } catch (e) {
         debugPrint('[TokenStorage] Failed to persist tokens on web: $e');
         // Tokens remain in memory cache
@@ -99,9 +101,15 @@ class TokenStorage {
     // Return cached value if available
     if (_cachedAccessToken != null) return _cachedAccessToken;
 
-    // Read from persistent storage (works on both web and native)
+    // Read from persistent storage
     try {
-      final token = await _secureStorage.read(key: _accessKey);
+      String? token;
+      if (kIsWeb) {
+        final prefs = await SharedPreferences.getInstance();
+        token = prefs.getString(_accessKey);
+      } else {
+        token = await _secureStorage.read(key: _accessKey);
+      }
       _cachedAccessToken = token;
       return token;
     } catch (e) {
@@ -114,9 +122,15 @@ class TokenStorage {
     // Return cached value if available
     if (_cachedRefreshToken != null) return _cachedRefreshToken;
 
-    // Read from persistent storage (works on both web and native)
+    // Read from persistent storage
     try {
-      final token = await _secureStorage.read(key: _refreshKey);
+      String? token;
+      if (kIsWeb) {
+        final prefs = await SharedPreferences.getInstance();
+        token = prefs.getString(_refreshKey);
+      } else {
+        token = await _secureStorage.read(key: _refreshKey);
+      }
       _cachedRefreshToken = token;
       return token;
     } catch (e) {
@@ -131,10 +145,19 @@ class TokenStorage {
 
     // Clear from persistent storage on all platforms
     try {
-      await Future.wait([
-        _secureStorage.delete(key: _accessKey),
-        _secureStorage.delete(key: _refreshKey),
-      ]);
+      if (kIsWeb) {
+        final prefs = await SharedPreferences.getInstance();
+        await Future.wait([
+          prefs.remove(_accessKey),
+          prefs.remove(_refreshKey),
+        ]);
+      } else {
+        await Future.wait([
+          _secureStorage.delete(key: _accessKey),
+          _secureStorage.delete(key: _refreshKey),
+        ]);
+      }
+      debugPrint('[TokenStorage] Tokens cleared');
     } catch (e) {
       debugPrint('[TokenStorage] Failed to clear tokens: $e');
     }

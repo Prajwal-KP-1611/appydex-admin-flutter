@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../core/api_client.dart';
 
@@ -253,7 +254,9 @@ class _JobPollerState extends ConsumerState<JobPoller> {
                         'Job completed!',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.onPrimaryContainer,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onPrimaryContainer,
                         ),
                       ),
                       if (result.hasDownload) ...[
@@ -262,10 +265,9 @@ class _JobPollerState extends ConsumerState<JobPoller> {
                           'Download ready (expires ${_formatExpiry(result.expiresAt)})',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onPrimaryContainer
-                                .withOpacity(0.7),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onPrimaryContainer.withOpacity(0.7),
                           ),
                         ),
                       ],
@@ -367,7 +369,7 @@ class _JobPollerState extends ConsumerState<JobPoller> {
     // On web, open in new tab
     // ignore: avoid_web_libraries_in_flutter
     // html.window.open(url, '_blank');
-    
+
     // For now, just show snackbar with URL
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -375,9 +377,11 @@ class _JobPollerState extends ConsumerState<JobPoller> {
           content: Text('Download URL: $url'),
           action: SnackBarAction(
             label: 'Open',
-            onPressed: () {
-              // TODO: Open URL in browser
-              debugPrint('Open: $url');
+            onPressed: () async {
+              final uri = Uri.parse(url);
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
             },
           ),
           duration: const Duration(seconds: 10),

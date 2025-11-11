@@ -22,7 +22,9 @@ final _baseVendor = Vendor(
   documents: const [],
 );
 
-class _FakeVendorRepository implements VendorRepository {
+class _FakeVendorRepository extends VendorRepository {
+  _FakeVendorRepository() : super(null as dynamic);
+
   final Pagination<Vendor> _page = Pagination<Vendor>(
     items: [_baseVendor],
     total: 1,
@@ -99,12 +101,6 @@ void main() {
             ),
           ),
           vendorDetailProvider.overrideWith((ref, id) async => _baseVendor),
-          vendorServicesProvider.overrideWith((ref, id) async => const []),
-          vendorAvailabilityProvider.overrideWith((ref, id) async => const []),
-          vendorBookingsProvider.overrideWith((ref, id) async => const []),
-          vendorLeadsProvider.overrideWith((ref, id) async => const []),
-          vendorReviewsProvider.overrideWith((ref, id) async => const []),
-          vendorAuditProvider.overrideWith((ref, id) async => const []),
         ],
         child: const MaterialApp(
           home: VendorDetailScreen(args: VendorDetailArgs(vendorId: 1)),

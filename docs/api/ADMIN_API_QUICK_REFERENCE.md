@@ -14,20 +14,34 @@
 
 ## Authentication
 
+⚠️ **UPDATED (Nov 10, 2025):** Admin authentication now uses **password-only login**.
+
 ### Login Flow
 ```dart
-// Two-step login: Email/Phone → OTP → Password → Login
-
-// Step 1: Request OTP
-final otpRepo = ref.read(otpRepositoryProvider);
-final result = await otpRepo.requestOtp(emailOrPhone: email);
-
-// Step 2: Login with OTP + Password
+// Single-step password-only login
 await ref.read(adminSessionProvider.notifier).login(
-  email: email,
-  password: password,
-  otp: otp,
+  email: 'admin@appydex.com',
+  password: 'SecurePassword123',
 );
+
+// Response includes access_token, csrf_token, user details, roles
+```
+
+### API Endpoint
+```http
+POST /api/v1/admin/auth/login
+Content-Type: application/json
+
+{
+  "email_or_phone": "admin@appydex.com",
+  "password": "SecurePassword123"
+}
+```
+
+### ❌ Deprecated: OTP Flow
+```dart
+// ⚠️ DEPRECATED - Do not use
+// POST /admin/auth/request-otp returns HTTP 410 GONE
 ```
 
 ### Using Bearer Token

@@ -5,7 +5,9 @@ enum AppRoute {
   dashboard('/dashboard'),
   analytics('/analytics'),
   admins('/admins'),
-  vendors('/vendors'),
+  vendors('/vendors'), // Keep for backward compatibility
+  vendorOnboarding('/vendors/onboarding'),
+  vendorManagement('/vendors/management'),
   vendorDetail('/vendors/detail'),
   users('/users'),
   services('/services'),
@@ -21,7 +23,7 @@ enum AppRoute {
 
   const AppRoute(this.path);
   final String path;
-  
+
   /// Check if route should be available in current flavor
   bool get isAvailable {
     // Hide diagnostics in production

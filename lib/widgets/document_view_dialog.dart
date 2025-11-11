@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class DocumentViewDialog extends StatefulWidget {
   const DocumentViewDialog({
@@ -73,13 +74,25 @@ class _DocumentViewDialogState extends State<DocumentViewDialog> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.download),
-                  onPressed: () {
-                    // TODO: Implement download functionality
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Download link: Will open in browser'),
-                      ),
-                    );
+                  onPressed: () async {
+                    final url = Uri.parse(widget.documentUrl);
+                    if (await canLaunchUrl(url)) {
+                      await launchUrl(
+                        url,
+                        mode: LaunchMode.externalApplication,
+                      );
+                    } else {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Cannot open URL: ${widget.documentUrl}',
+                            ),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
                   },
                   tooltip: 'Download',
                 ),

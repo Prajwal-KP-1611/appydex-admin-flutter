@@ -244,28 +244,64 @@ class _VendorSummaryCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 16,
-              runSpacing: 8,
-              children: [
-                _InfoChip('Slug', vendor.slug),
-                _InfoChip('User', '#${vendor.userId}'),
-                if (vendor.contactEmail != null)
-                  _InfoChip('Email', vendor.contactEmail!),
-                if (vendor.contactPhone != null)
-                  _InfoChip('Phone', vendor.contactPhone!),
-                if (vendor.businessType != null)
-                  _InfoChip('Business', vendor.businessType!),
-                _InfoChip(
-                  'Created',
+            const SizedBox(height: 16),
+
+            // Vendor Information Section
+            _buildInfoSection(context, 'Vendor Information', [
+              if (vendor.contactEmail != null)
+                _buildInfoRow(
+                  Icons.email_outlined,
+                  'Email',
+                  vendor.contactEmail!,
+                ),
+              if (vendor.contactPhone != null)
+                _buildInfoRow(
+                  Icons.phone_outlined,
+                  'Phone',
+                  vendor.contactPhone!,
+                ),
+              _buildInfoRow(
+                Icons.business_outlined,
+                'Company Name',
+                vendor.companyName,
+              ),
+              _buildInfoRow(Icons.tag, 'Slug', vendor.slug),
+              if (vendor.businessType != null)
+                _buildInfoRow(
+                  Icons.category_outlined,
+                  'Business Type',
+                  vendor.businessType!,
+                ),
+            ]),
+
+            const SizedBox(height: 16),
+
+            // System Information
+            _buildInfoSection(context, 'System Information', [
+              _buildInfoRow(Icons.badge_outlined, 'Vendor ID', '#${vendor.id}'),
+              _buildInfoRow(
+                Icons.person_outline,
+                'User ID',
+                '#${vendor.userId}',
+              ),
+              _buildInfoRow(
+                Icons.calendar_today_outlined,
+                'Created',
+                MaterialLocalizations.of(
+                  context,
+                ).formatFullDate(vendor.createdAt),
+              ),
+              if (vendor.updatedAt != null)
+                _buildInfoRow(
+                  Icons.update_outlined,
+                  'Updated',
                   MaterialLocalizations.of(
                     context,
-                  ).formatFullDate(vendor.createdAt),
+                  ).formatFullDate(vendor.updatedAt!),
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
+            ]),
+
+            const SizedBox(height: 24),
             Wrap(
               spacing: 12,
               runSpacing: 12,
@@ -306,17 +342,53 @@ class _VendorSummaryCard extends StatelessWidget {
       ),
     );
   }
-}
 
-class _InfoChip extends StatelessWidget {
-  const _InfoChip(this.label, this.value);
+  Widget _buildInfoSection(
+    BuildContext context,
+    String title,
+    List<Widget> children,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        ...children,
+      ],
+    );
+  }
 
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Chip(label: Text('$label: $value'));
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: Colors.grey[600]),
+          const SizedBox(width: 12),
+          SizedBox(
+            width: 140,
+            child: Text(
+              '$label:',
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[700],
+              ),
+            ),
+          ),
+          Expanded(
+            child: SelectableText(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.w400),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

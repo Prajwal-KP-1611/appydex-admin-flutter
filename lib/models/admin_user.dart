@@ -7,12 +7,14 @@ class AdminUser {
     required this.email,
     required this.roles,
     this.name,
+    this.phoneNumber,
     this.createdAt,
   });
 
   final int id;
   final String email;
   final String? name;
+  final String? phoneNumber;
   final List<AdminRole> roles;
   final DateTime? createdAt;
 
@@ -28,6 +30,7 @@ class AdminUser {
           : int.tryParse(json['id']?.toString() ?? '0') ?? 0,
       email: json['email'] as String? ?? '',
       name: json['name'] as String?,
+      phoneNumber: json['phone_number'] as String?,
       roles: roles,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'] as String)
@@ -39,6 +42,7 @@ class AdminUser {
     'id': id,
     'email': email,
     if (name != null) 'name': name,
+    if (phoneNumber != null) 'phone_number': phoneNumber,
     'roles': roles.map((r) => r.value).toList(),
     if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
   };
@@ -47,6 +51,7 @@ class AdminUser {
     int? id,
     String? email,
     String? name,
+    String? phoneNumber,
     List<AdminRole>? roles,
     DateTime? createdAt,
   }) {
@@ -54,6 +59,7 @@ class AdminUser {
       id: id ?? this.id,
       email: email ?? this.email,
       name: name ?? this.name,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
       roles: roles ?? this.roles,
       createdAt: createdAt ?? this.createdAt,
     );
@@ -98,19 +104,26 @@ class AdminUserRequest {
 
 /// Request model for updating admin users
 /// PUT /api/v1/admin/accounts/{user_id}
-/// All fields are optional: { "email": "...", "name": "...", "password": "..." }
+/// All fields are optional: { "email": "...", "name": "...", "phone_number": "...", "password": "..." }
 /// Note: Role changes are done via /api/v1/admin/roles/assign and /revoke
 class AdminUserUpdateRequest {
-  AdminUserUpdateRequest({this.email, this.name, this.password});
+  AdminUserUpdateRequest({
+    this.email,
+    this.name,
+    this.phoneNumber,
+    this.password,
+  });
 
   final String? email;
   final String? name;
+  final String? phoneNumber;
   final String? password;
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
     if (email != null) json['email'] = email;
     if (name != null) json['name'] = name;
+    if (phoneNumber != null) json['phone_number'] = phoneNumber;
     if (password != null) json['password'] = password;
     return json;
   }

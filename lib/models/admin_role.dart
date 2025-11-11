@@ -128,7 +128,10 @@ class AdminSession {
       refreshToken: (json['refresh'] ?? json['refresh_token']) as String? ?? '',
       roles: roles,
       activeRole: activeRole,
-      adminId: (userData?['id']?.toString() ?? json['admin_id']) as String?,
+      adminId:
+          (userData?['id']?.toString() ??
+          json['admin_id']?.toString() ??
+          json['user_id']?.toString()),
       email: email,
       expiresAt: json['expires_at'] != null
           ? DateTime.parse(json['expires_at'] as String)

@@ -5,6 +5,10 @@ import '../api_client.dart';
 
 /// Repository for OTP (One-Time Password) operations
 /// Handles OTP request for two-step authentication
+///
+/// ⚠️ DEPRECATED (Nov 10, 2025): Admin OTP authentication has been removed.
+/// Admin users now use password-only login. This endpoint returns HTTP 410 GONE.
+/// OTP authentication remains active for vendors and end-users.
 class OtpRepository {
   OtpRepository({required ApiClient apiClient}) : _apiClient = apiClient;
 
@@ -13,11 +17,15 @@ class OtpRepository {
   /// Request OTP for email or phone (ADMIN)
   /// POST /api/v1/admin/auth/request-otp
   ///
+  /// ⚠️ DEPRECATED: This endpoint now returns HTTP 410 GONE for admin users.
+  /// Admin login is now password-only (no OTP required).
+  ///
   /// Request: { "email_or_phone": "admin@example.com" } or { "email_or_phone": "+1234567890" }
-  /// Response: { "message": "...", "otp_sent": { "email": true, "otp_email": "000000" }, "requires_password": true }
+  /// Response: { "detail": "OTP authentication deprecated for admin users. Use password-only login." }
   ///
   /// Note: This endpoint does not require authentication (skipAuth: true)
   /// Backend accepts unified "email_or_phone" field
+  @Deprecated('Admin OTP authentication removed. Use password-only login.')
   Future<OtpRequestResult> requestOtp({required String emailOrPhone}) async {
     try {
       final response = await _apiClient.dio.post<Map<String, dynamic>>(

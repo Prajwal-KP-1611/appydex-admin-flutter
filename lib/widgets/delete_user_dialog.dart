@@ -228,7 +228,7 @@ class _DeleteUserDialogState extends State<DeleteUserDialog> {
                             backgroundColor: Colors.red,
                             foregroundColor: Colors.white,
                           ),
-                          child: Text('Delete ${_deletionTypeTitle}'),
+                          child: Text('Delete $_deletionTypeTitle'),
                         ),
                     ],
                   ),

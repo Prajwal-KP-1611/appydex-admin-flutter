@@ -26,10 +26,11 @@ class Pagination<T> {
     Map<String, dynamic> json,
     T Function(Map<String, dynamic> item) decode,
   ) {
-    // Support 3 backend pagination formats:
+    // Support 4 backend pagination formats:
     // Format A: {items: [], total, skip, limit} - accounts, service-types
     // Format B: {items: [], meta: {page, page_size, total}} - vendors
     // Format C: {data: [], meta: {page, page_size, total}} - jobs
+    // Format D: {items: [], page, page_size, total, total_pages} - end-users (flat structure)
     List<dynamic> itemsList;
     int total;
     int page;
@@ -49,6 +50,14 @@ class Pagination<T> {
       total = meta['total'] as int? ?? itemsList.length;
       page = meta['page'] as int? ?? 1;
       pageSize = _resolvePageSize(meta, fallback: itemsList.length);
+    } else if (json.containsKey('items') &&
+        json.containsKey('page') &&
+        json.containsKey('page_size')) {
+      // Format D: {items: [...], page, page_size, total, total_pages} - Flat structure
+      itemsList = json['items'] as List<dynamic>? ?? const [];
+      total = json['total'] as int? ?? itemsList.length;
+      page = json['page'] as int? ?? 1;
+      pageSize = json['page_size'] as int? ?? itemsList.length;
     } else {
       // Format A: {items: [...], total, skip, limit}
       itemsList = json['items'] as List<dynamic>? ?? const [];

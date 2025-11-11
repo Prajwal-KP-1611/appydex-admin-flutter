@@ -130,7 +130,9 @@ class ApiClient {
              ),
            ) {
     // Debug: Print the resolved base URL
-    print('🔧 ApiClient initialized with baseUrl: ${_dio.options.baseUrl}');
+    debugPrint(
+      '🔧 ApiClient initialized with baseUrl: ${_dio.options.baseUrl}',
+    );
 
     // Enable cookie credentials on web (for httpOnly refresh token flow)
     if (kIsWeb) {
@@ -414,9 +416,13 @@ class ApiClient {
           final retried = await _retryRequest(error.requestOptions);
           handler.resolve(retried);
           return;
+        } else {
+          // Refresh failed - session is invalid
+          debugPrint('[ApiClient] Refresh failed, session invalid');
         }
-      } catch (_) {
-        // Propagate failure so diagnostics can surface it.
+      } catch (refreshError) {
+        // Refresh attempt failed
+        debugPrint('[ApiClient] Refresh error: $refreshError');
       }
     }
 
@@ -488,6 +494,13 @@ class ApiClient {
       final refreshToken = await _tokenStorage.readRefreshToken();
       Response<Map<String, dynamic>>? response;
 
+      if (kDebugMode) {
+        debugPrint('[ApiClient] Attempting token refresh (source: $source)');
+        debugPrint(
+          '[ApiClient] Refresh token available: ${refreshToken != null && refreshToken.isNotEmpty ? "YES (${refreshToken.length} chars)" : "NO"}',
+        );
+      }
+
       if (refreshToken == null || refreshToken.isEmpty) {
         // Cookie-based fallback (web): attempt refresh without body
         if (kIsWeb) {
@@ -497,7 +510,7 @@ class ApiClient {
             );
           }
           response = await _dio.post<Map<String, dynamic>>(
-            '/auth/refresh',
+            '/admin/auth/refresh', // Use admin endpoint
             options: Options(
               extra: const {
                 'skipAuth': true,
@@ -520,8 +533,9 @@ class ApiClient {
           return attempt;
         }
       } else {
+        // Send refresh token in request body
         response = await _dio.post<Map<String, dynamic>>(
-          '/auth/refresh',
+          '/admin/auth/refresh', // Use admin endpoint
           data: {'refresh_token': refreshToken},
           options: Options(
             extra: const {
@@ -539,18 +553,73 @@ class ApiClient {
       if (response.statusCode == 200) {
         final data = response.data ?? <String, dynamic>{};
         final parsed = TokenPair.fromJson(data);
-        if (parsed.isValid) {
-          tokens = parsed;
-          await _tokenStorage.save(parsed);
+
+        // Some backends (especially when using httpOnly cookie refresh on web)
+        // return only a new access token and rely on the httpOnly refresh
+        // cookie for subsequent refreshes. Treat an access-token-only
+        // response as a successful refresh on web so we don't force a logout
+        // when a refresh_token is not present in the response body.
+        final hasAccess = parsed.accessToken.isNotEmpty;
+        final hasRefresh = parsed.refreshToken.isNotEmpty;
+
+        if (hasAccess) {
+          // If the response omitted the refresh token, preserve any
+          // existing refresh token we had (useful for native flows) or
+          // allow empty refresh token for cookie-based web flows.
+          final effectiveRefresh = hasRefresh
+              ? parsed.refreshToken
+              : (refreshToken ?? '');
+          final tokensToSave = TokenPair(
+            accessToken: parsed.accessToken,
+            refreshToken: effectiveRefresh,
+          );
+
+          tokens = tokensToSave;
+          await _tokenStorage.save(tokensToSave);
           _tokenManager.markRefreshed();
 
           // Start auto-refresh timer after successful token save
           startAutoRefresh();
+
+          if (kDebugMode) {
+            debugPrint('[ApiClient] ✅ Token refresh successful');
+            debugPrint(
+              '[ApiClient] New access token: ${parsed.accessToken.length} chars',
+            );
+            debugPrint(
+              '[ApiClient] Refresh token: ${effectiveRefresh.isNotEmpty ? "${effectiveRefresh.length} chars" : "empty (cookie-based)"}',
+            );
+          }
         } else {
           error = const TokenRefreshException('Invalid refresh response');
+
+          if (kDebugMode) {
+            debugPrint(
+              '[ApiClient] ❌ Refresh failed: No access token in response',
+            );
+          }
         }
       } else if (response.statusCode == null) {
         error = const TokenRefreshException('Refresh failed without response');
+      } else {
+        // Non-200 response (401, 422, etc.) - refresh failed
+        final statusCode = response.statusCode;
+        final responseData = response.data;
+        String errorMessage = 'Refresh failed with status $statusCode';
+
+        // Try to extract error message from response
+        if (responseData is Map<String, dynamic>) {
+          final message = responseData['message'] as String?;
+          final detail = responseData['detail'] as String?;
+          errorMessage = message ?? detail ?? errorMessage;
+        }
+
+        error = TokenRefreshException(errorMessage);
+
+        if (kDebugMode) {
+          debugPrint('[ApiClient] Refresh failed: $statusCode - $errorMessage');
+          debugPrint('[ApiClient] Response data: $responseData');
+        }
       }
 
       final attempt = RefreshAttempt(
@@ -661,7 +730,8 @@ class ApiClient {
 
     // Standardized messages for common HTTP status codes
     if (statusCode == 401) {
-      return 'Session expired. Please log in again.';
+      debugPrint('[ApiClient] 401 Unauthorized - Session expired');
+      return 'Your session has expired. Please log in again.';
     }
     if (statusCode == 403) {
       return 'Access denied. You do not have permission to perform this action.';
@@ -680,12 +750,14 @@ class ApiClient {
           'jwt',
           'authentication',
           'bearer',
+          'refresh',
         ];
         final fullMessage = '${message ?? ''} ${errorMessage ?? ''}'
             .toLowerCase();
 
         if (authKeywords.any((keyword) => fullMessage.contains(keyword))) {
-          return 'Authentication failed. Please log in again.';
+          debugPrint('[ApiClient] 422 Auth error - Token/session invalid');
+          return 'Your session has expired. Please log in again.';
         }
 
         // Extract validation message if available

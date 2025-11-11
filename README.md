@@ -59,8 +59,27 @@ curl -X POST "$BASE/api/v1/subscriptions/42/activate" \
   -d '{"paid_months":3}'
 ```
 
+## Authentication
+
+**⚠️ BREAKING CHANGE (Nov 10, 2025):** Admin authentication now uses **password-only login** (no OTP required).
+
+### Admin Login
+```dart
+// Simple password-only login
+await authService.login(
+  email: 'admin@appydex.com',
+  password: 'SecurePassword123',
+);
+```
+
+- **Deprecated:** `POST /admin/auth/request-otp` (returns HTTP 410 GONE)
+- **Current:** `POST /admin/auth/login` with `{ "email_or_phone": "...", "password": "..." }`
+- **Vendor/User auth:** Still uses OTP (unchanged)
+
+See [ADMIN_AUTH_PASSWORD_ONLY_MIGRATION.md](docs/ADMIN_AUTH_PASSWORD_ONLY_MIGRATION.md) for full migration guide.
+
 ## Troubleshooting
 
 - Dio Web: GET/HEAD requests automatically disable sendTimeout to avoid browser fetch errors; payload requests continue to respect the configured timeout.
 - Diagnostics call `/healthz` at the root of the API host (not under `/api/v1`); a 404 usually means the infra endpoint is missing.
-- The `last-otp` endpoint is not implemented by default--use backend tooling if you need OTP visibility.
+- **Admin OTP deprecated:** The `/admin/auth/request-otp` endpoint now returns HTTP 410. Use password-only login.

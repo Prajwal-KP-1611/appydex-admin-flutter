@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/api_client.dart';
+import '../models/analytics_models.dart';
 import 'admin_exceptions.dart';
 
 class TopSearchItem {
@@ -179,9 +180,115 @@ class AnalyticsRepository {
       rethrow;
     }
   }
+
+  /// Fetch platform hits analytics
+  /// GET /api/v1/admin/analytics/platform-hits
+  ///
+  /// Query Parameters:
+  /// - start_date: Start date in ISO format (required)
+  /// - end_date: End date in ISO format (required)
+  ///
+  /// Returns the number of hits per platform (iOS, Android, Web)
+  ///
+  /// Example:
+  /// ```dart
+  /// final data = await repo.getPlatformHits(
+  ///   startDate: DateTime(2025, 1, 1),
+  ///   endDate: DateTime(2025, 1, 31),
+  /// );
+  /// ```
+  Future<PlatformHitsResponse> getPlatformHits({
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    try {
+      final response = await _client.requestAdmin<Map<String, dynamic>>(
+        '/admin/analytics/platform-hits',
+        queryParameters: {
+          'start_date': startDate.toIso8601String(),
+          'end_date': endDate.toIso8601String(),
+        },
+      );
+      return PlatformHitsResponse.fromJson(response.data ?? {});
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw AdminEndpointMissing('admin/analytics/platform-hits');
+      }
+      rethrow;
+    }
+  }
+
+  /// Fetch active users count
+  /// GET /api/v1/admin/analytics/active-users
+  ///
+  /// No query parameters required.
+  /// Returns the count of currently active users.
+  ///
+  /// Example:
+  /// ```dart
+  /// final activeUsers = await repo.getActiveUsers();
+  /// print('Active users: ${activeUsers.activeUsers}');
+  /// ```
+  Future<ActiveUsersCount> getActiveUsers() async {
+    try {
+      final response = await _client.requestAdmin<Map<String, dynamic>>(
+        '/admin/analytics/active-users',
+      );
+      return ActiveUsersCount.fromJson(response.data ?? {});
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        throw AdminEndpointMissing('admin/analytics/active-users');
+      }
+      rethrow;
+    }
+  }
 }
 
 final analyticsRepositoryProvider = Provider<AnalyticsRepository>((ref) {
   final client = ref.watch(apiClientProvider);
   return AnalyticsRepository(client);
 });
+
+/// Provider for platform hits data
+///
+/// Usage:
+/// ```dart
+/// final dateRange = DateRange(
+///   startDate: DateTime(2025, 1, 1),
+///   endDate: DateTime(2025, 1, 31),
+/// );
+/// final platformHits = ref.watch(platformHitsProvider(dateRange));
+/// ```
+final platformHitsProvider =
+    FutureProvider.family<PlatformHitsResponse, DateRange>((ref, dateRange) {
+      final repo = ref.watch(analyticsRepositoryProvider);
+      return repo.getPlatformHits(
+        startDate: dateRange.startDate,
+        endDate: dateRange.endDate,
+      );
+    });
+
+/// Provider for active users count
+final activeUsersProvider = FutureProvider<ActiveUsersCount>((ref) {
+  final repo = ref.watch(analyticsRepositoryProvider);
+  return repo.getActiveUsers();
+});
+
+/// Helper class for date range parameters
+class DateRange {
+  final DateTime startDate;
+  final DateTime endDate;
+
+  const DateRange({required this.startDate, required this.endDate});
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is DateRange &&
+        other.startDate == startDate &&
+        other.endDate == endDate;
+  }
+
+  @override
+  int get hashCode => startDate.hashCode ^ endDate.hashCode;
+}

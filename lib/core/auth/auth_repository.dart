@@ -23,7 +23,8 @@ class AuthRepository {
   Future<TokenPair?> forceRefresh() => _apiClient.forceRefresh();
 
   Future<Response<dynamic>> login(Map<String, dynamic> payload) {
-    // TODO(AUTH-002): Implement full login payload handling with OTP support.
+    // Admin login now uses password-only authentication (no OTP).
+    // Payload: { "email_or_phone": "...", "password": "..." }
     return _apiClient.dio.post('/admin/auth/login', data: payload);
   }
 
@@ -46,8 +47,10 @@ class AuthRepository {
   /// Request OTP for admin login
   /// POST /api/v1/admin/auth/request-otp
   ///
-  /// Sends OTP to admin's email/phone for login verification.
+  /// ⚠️ DEPRECATED (Nov 10, 2025): This endpoint returns HTTP 410 GONE.
+  /// Admin users now use password-only authentication.
   /// No authentication required for this endpoint.
+  @Deprecated('Admin OTP authentication removed. Use password-only login.')
   Future<Map<String, dynamic>> requestOtp({
     String? email,
     String? phone,

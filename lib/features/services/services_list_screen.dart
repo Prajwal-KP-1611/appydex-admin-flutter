@@ -454,6 +454,12 @@ class _ServicesListScreenState extends ConsumerState<ServicesListScreen> {
                         columns: const [
                           DataColumn(
                             label: Text(
+                              'SL No.',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Text(
                               'Category',
                               style: TextStyle(fontWeight: FontWeight.bold),
                             ),
@@ -477,9 +483,24 @@ class _ServicesListScreenState extends ConsumerState<ServicesListScreen> {
                             ),
                           ),
                         ],
-                        rows: filtered.map((type) {
+                        rows: filtered.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final type = entry.value;
+                          // Calculate serial number based on current page
+                          final serialNumber =
+                              (pagination.page - 1) * pagination.pageSize +
+                              index +
+                              1;
                           return DataRow(
                             cells: [
+                              DataCell(
+                                Text(
+                                  '$serialNumber',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
                               DataCell(
                                 Container(
                                   padding: const EdgeInsets.symmetric(
