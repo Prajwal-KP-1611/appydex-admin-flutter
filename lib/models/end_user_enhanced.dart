@@ -6,6 +6,11 @@ class EndUserEnhanced {
   final String phone;
   final String name;
   final String? profilePictureUrl;
+  final String? address;
+  final String? city;
+  final String? state;
+  final String? pincode;
+  final String? country;
   final bool isActive;
   final bool isSuspended;
   final String? suspensionReason;
@@ -28,6 +33,11 @@ class EndUserEnhanced {
     required this.phone,
     required this.name,
     this.profilePictureUrl,
+    this.address,
+    this.city,
+    this.state,
+    this.pincode,
+    this.country,
     required this.isActive,
     required this.isSuspended,
     this.suspensionReason,
@@ -50,6 +60,11 @@ class EndUserEnhanced {
       phone: json['phone'] as String,
       name: json['name'] as String,
       profilePictureUrl: json['profile_picture_url'] as String?,
+      address: json['address'] as String?,
+      city: json['city'] as String?,
+      state: json['state'] as String?,
+      pincode: json['pincode'] as String?,
+      country: json['country'] as String?,
       isActive: json['is_active'] as bool? ?? true,
       isSuspended: json['is_suspended'] as bool? ?? false,
       suspensionReason: json['suspension_reason'] as String?,
@@ -85,6 +100,11 @@ class EndUserEnhanced {
       'phone': phone,
       'name': name,
       'profile_picture_url': profilePictureUrl,
+      'address': address,
+      'city': city,
+      'state': state,
+      'pincode': pincode,
+      'country': country,
       'is_active': isActive,
       'is_suspended': isSuspended,
       'suspension_reason': suspensionReason,

@@ -15,6 +15,14 @@ class UserProfileTab extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Personal Information
+          _buildPersonalInfoCard(),
+          const SizedBox(height: 16),
+
+          // Contact Information
+          _buildContactInfoCard(),
+          const SizedBox(height: 16),
+
           // Trust Score Section
           _buildTrustScoreCard(),
           const SizedBox(height: 16),
@@ -36,6 +44,97 @@ class UserProfileTab extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Widget _buildPersonalInfoCard() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Personal Information',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            _buildInfoRow('Name', user.name ?? '—'),
+            _buildInfoRow('User ID', '#${user.id}'),
+            _buildInfoRow('Status', user.accountStatus ?? 'active'),
+            _buildInfoRow('Joined', _formatDate(user.createdAt)),
+            if (user.lastLoginAt != null)
+              _buildInfoRow('Last Login', _formatDate(user.lastLoginAt!)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContactInfoCard() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Contact Information',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            _buildInfoRow('Phone', user.phone ?? '—'),
+            _buildInfoRow('Email', user.email),
+            if (user.address != null && user.address!.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              const Text(
+                'Address',
+                style: TextStyle(fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 4),
+              Text(user.address!),
+            ],
+            if (user.city != null)
+              _buildInfoRow('City', user.city!),
+            if (user.state != null)
+              _buildInfoRow('State', user.state!),
+            if (user.pincode != null)
+              _buildInfoRow('Pincode', user.pincode!),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              '$label:',
+              style: const TextStyle(
+                fontWeight: FontWeight.w500,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return '—';
+    return '${date.day}/${date.month}/${date.year}';
   }
 
   Widget _buildTrustScoreCard() {

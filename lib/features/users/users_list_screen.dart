@@ -375,7 +375,7 @@ class _UsersListScreenState extends ConsumerState<UsersListScreen> {
                                     ),
                                     columns: const [
                                       DataColumn(label: Text('SL No.')),
-                                      DataColumn(label: Text('Email')),
+                                      DataColumn(label: Text('Phone')),
                                       DataColumn(label: Text('Name')),
                                       DataColumn(label: Text('Status')),
                                       DataColumn(label: Text('Trust Score')),
@@ -417,7 +417,7 @@ class _UsersListScreenState extends ConsumerState<UsersListScreen> {
                                                 );
                                               },
                                               child: Text(
-                                                user.email,
+                                                user.phone ?? '—',
                                                 style: const TextStyle(
                                                   color: Colors.blue,
                                                   decoration:
