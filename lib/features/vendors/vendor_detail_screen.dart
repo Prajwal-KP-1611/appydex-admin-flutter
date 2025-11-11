@@ -82,94 +82,102 @@ class _VendorDetailViewState extends ConsumerState<_VendorDetailView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: _VendorSummaryCard(
-                vendor: vendor,
-                onApprove: vendor.isVerified
-                    ? null
-                    : () async {
-                        final notes = await showDialog<String>(
-                          context: context,
-                          builder: (context) => ApproveVendorDialog(
-                            vendorName: vendor.companyName,
-                          ),
-                        );
-                        if (notes == null) return;
+            SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: _VendorSummaryCard(
+                  vendor: vendor,
+                  onApprove: vendor.isVerified
+                      ? null
+                      : () async {
+                          final notes = await showDialog<String>(
+                            context: context,
+                            builder: (context) => ApproveVendorDialog(
+                              vendorName: vendor.companyName,
+                            ),
+                          );
+                          if (notes == null) return;
 
-                        try {
-                          await notifier.verifyVendor(vendor.id, notes: notes);
-                          if (!context.mounted) return;
-                          ToastService.showSuccess(
-                            context,
-                            'Vendor approved successfully',
+                          try {
+                            await notifier.verifyVendor(
+                              vendor.id,
+                              notes: notes,
+                            );
+                            if (!context.mounted) return;
+                            ToastService.showSuccess(
+                              context,
+                              'Vendor approved successfully',
+                            );
+                            ref.invalidate(vendorDetailProvider(vendor.id));
+                            ref.invalidate(vendorsProvider);
+                          } catch (error) {
+                            if (!context.mounted) return;
+                            ToastService.showError(
+                              context,
+                              'Failed to approve vendor: $error',
+                            );
+                          }
+                        },
+                  onReject: vendor.isVerified
+                      ? null
+                      : () async {
+                          final reason = await showDialog<String>(
+                            context: context,
+                            builder: (context) => RejectVendorDialog(
+                              vendorName: vendor.companyName,
+                            ),
                           );
-                          ref.invalidate(vendorDetailProvider(vendor.id));
-                          ref.invalidate(vendorsProvider);
-                        } catch (error) {
-                          if (!context.mounted) return;
-                          ToastService.showError(
-                            context,
-                            'Failed to approve vendor: $error',
-                          );
-                        }
-                      },
-                onReject: vendor.isVerified
-                    ? null
-                    : () async {
-                        final reason = await showDialog<String>(
-                          context: context,
-                          builder: (context) => RejectVendorDialog(
-                            vendorName: vendor.companyName,
-                          ),
-                        );
-                        if (reason == null) return;
+                          if (reason == null) return;
 
-                        try {
-                          await notifier.rejectVendor(
-                            vendor.id,
-                            reason: reason,
-                          );
-                          if (!context.mounted) return;
-                          ToastService.showSuccess(context, 'Vendor rejected');
-                          ref.invalidate(vendorDetailProvider(vendor.id));
-                          ref.invalidate(vendorsProvider);
-                        } catch (error) {
-                          if (!context.mounted) return;
-                          ToastService.showError(
-                            context,
-                            'Failed to reject vendor: $error',
-                          );
-                        }
-                      },
-                onViewDocuments: () {
-                  showDialog(
-                    context: context,
-                    builder: (context) => VendorDocumentsDialog(
-                      vendorId: vendor.id,
-                      vendorName: vendor.companyName,
-                    ),
-                  );
-                },
-                onImpersonate: () {
-                  if (_impersonationModalShown) return;
-                  _impersonationModalShown = true;
-                  showDialog(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Impersonation'),
-                      content: const Text(
-                        'Admin impersonation is not yet implemented. Please coordinate with the backend team to issue temporary vendor tokens.',
+                          try {
+                            await notifier.rejectVendor(
+                              vendor.id,
+                              reason: reason,
+                            );
+                            if (!context.mounted) return;
+                            ToastService.showSuccess(
+                              context,
+                              'Vendor rejected',
+                            );
+                            ref.invalidate(vendorDetailProvider(vendor.id));
+                            ref.invalidate(vendorsProvider);
+                          } catch (error) {
+                            if (!context.mounted) return;
+                            ToastService.showError(
+                              context,
+                              'Failed to reject vendor: $error',
+                            );
+                          }
+                        },
+                  onViewDocuments: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => VendorDocumentsDialog(
+                        vendorId: vendor.id,
+                        vendorName: vendor.companyName,
                       ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Close'),
+                    );
+                  },
+                  onImpersonate: () {
+                    if (_impersonationModalShown) return;
+                    _impersonationModalShown = true;
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Impersonation'),
+                        content: const Text(
+                          'Admin impersonation is not yet implemented. Please coordinate with the backend team to issue temporary vendor tokens.',
                         ),
-                      ],
-                    ),
-                  ).whenComplete(() => _impersonationModalShown = false);
-                },
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Close'),
+                          ),
+                        ],
+                      ),
+                    ).whenComplete(() => _impersonationModalShown = false);
+                  },
+                ),
               ),
             ),
             const TabBar(
