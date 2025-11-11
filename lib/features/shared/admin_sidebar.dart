@@ -225,25 +225,8 @@ class AdminScaffold extends ConsumerWidget {
   }
 
   Widget? _buildEnvironmentChip(BuildContext context) {
-    // Hide in production
-    if (kAppFlavor == 'prod') return null;
-
-    final color = kAppFlavor == 'staging' ? Colors.orange : Colors.purple;
-
-    return Chip(
-      label: Text(
-        kAppFlavor.toUpperCase(),
-        style: const TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
-      ),
-      backgroundColor: color,
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      visualDensity: VisualDensity.compact,
-    );
+    // Always hide environment chip
+    return null;
   }
 
   Widget _buildSectionHeader(BuildContext context, String title) {
