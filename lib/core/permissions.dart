@@ -59,6 +59,9 @@ final permissionsProvider = Provider<Set<String>>((ref) {
       'campaigns:create',
       'campaigns:update',
       'campaigns:manual_credit',
+      // New bookings & referrals permissions
+      'bookings:list', 'bookings:view', 'bookings:update',
+      'referrals:list', 'referrals:view', 'referrals:stats',
       'audit_logs:list', 'audit_logs:export',
       'analytics:view', 'analytics:export',
       'notifications:send',
@@ -80,6 +83,8 @@ final permissionsProvider = Provider<Set<String>>((ref) {
       'service_type_requests:list',
       'service_type_requests:approve',
       'service_type_requests:reject',
+      // Limited bookings visibility for vendor admin (view list & details only)
+      'bookings:list', 'bookings:view',
     ]);
   } else if (role == AdminRole.accountsAdmin) {
     permissions.addAll([
@@ -99,6 +104,8 @@ final permissionsProvider = Provider<Set<String>>((ref) {
       'payments:refund',
       'payments:export',
       'invoices:download',
+      // Bookings management for accounts admin (update allowed)
+      'bookings:list', 'bookings:view', 'bookings:update',
     ]);
   } else if (role == AdminRole.reviewsAdmin) {
     permissions.addAll([
@@ -108,6 +115,9 @@ final permissionsProvider = Provider<Set<String>>((ref) {
       'reviews:appeal',
       'vendors:list',
       'vendors:view',
+      // Allow viewing bookings for cross-reference
+      'bookings:list', 'bookings:view',
+      'referrals:list', 'referrals:view',
     ]);
   } else if (role == AdminRole.supportAdmin) {
     permissions.addAll([
@@ -122,6 +132,9 @@ final permissionsProvider = Provider<Set<String>>((ref) {
       'payments:list',
       'payments:view',
       'reviews:list',
+      // Support can view bookings & referrals (no update)
+      'bookings:list', 'bookings:view',
+      'referrals:list', 'referrals:view',
     ]);
   }
 
@@ -214,6 +227,16 @@ class Permissions {
   static const campaignsCreate = 'campaigns:create';
   static const campaignsUpdate = 'campaigns:update';
   static const campaignsManualCredit = 'campaigns:manual_credit';
+
+  // Bookings (NEW)
+  static const bookingsList = 'bookings:list';
+  static const bookingsView = 'bookings:view'; // detail access
+  static const bookingsUpdate = 'bookings:update'; // status changes & notes
+
+  // Referrals (NEW)
+  static const referralsList = 'referrals:list';
+  static const referralsView = 'referrals:view';
+  static const referralsStats = 'referrals:stats';
 
   // Audit
   static const auditLogsList = 'audit_logs:list';

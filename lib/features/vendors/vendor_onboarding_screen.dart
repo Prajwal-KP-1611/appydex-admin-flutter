@@ -9,7 +9,6 @@ import '../../routes.dart';
 import '../shared/admin_sidebar.dart';
 import '../shared/confirm_dialog.dart';
 import '../../widgets/data_table_simple.dart';
-import '../../widgets/filter_row.dart';
 import '../../widgets/status_chip.dart';
 import '../../core/export_util.dart';
 import '../../widgets/trace_snackbar.dart';
@@ -126,16 +125,25 @@ class _VendorOnboardingScreenState
                 ],
 
                 // Filters
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isNarrow = constraints.maxWidth < 900;
-                    final filterChildren = <Widget>[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Theme.of(
+                        context,
+                      ).dividerColor.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
                       SizedBox(
-                        width: 220,
+                        width: 320,
                         child: TextField(
                           controller: _searchController,
                           decoration: const InputDecoration(
-                            labelText: 'Search (company or email)',
+                            labelText: 'Search (company, email, or phone)',
                             prefixIcon: Icon(Icons.search),
                           ),
                           onSubmitted: (value) => notifier.updateFilter(
@@ -143,30 +151,36 @@ class _VendorOnboardingScreenState
                           ),
                         ),
                       ),
-                      DropdownButtonFormField<String?>(
-                        initialValue: state.filter.status,
-                        decoration: const InputDecoration(labelText: 'Status'),
-                        items: const <DropdownMenuItem<String?>>[
-                          DropdownMenuItem(value: null, child: Text('All')),
-                          DropdownMenuItem(
-                            value: 'pending',
-                            child: Text('Pending Review'),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: DropdownButtonFormField<String?>(
+                          value: state.filter.status,
+                          decoration: const InputDecoration(
+                            labelText: 'Status',
                           ),
-                          DropdownMenuItem(
-                            value: 'onboarding',
-                            child: Text('Onboarding'),
+                          items: const <DropdownMenuItem<String?>>[
+                            DropdownMenuItem(value: null, child: Text('All')),
+                            DropdownMenuItem(
+                              value: 'pending',
+                              child: Text('Pending Review'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'onboarding',
+                              child: Text('Onboarding'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'rejected',
+                              child: Text('Rejected'),
+                            ),
+                          ],
+                          onChanged: (value) => notifier.updateFilter(
+                            state.filter.copyWith(status: value, page: 1),
                           ),
-                          DropdownMenuItem(
-                            value: 'rejected',
-                            child: Text('Rejected'),
-                          ),
-                        ],
-                        onChanged: (value) => notifier.updateFilter(
-                          state.filter.copyWith(status: value, page: 1),
                         ),
                       ),
+                      const SizedBox(width: 16),
                       SizedBox(
-                        width: 150,
+                        width: 180,
                         child: DropdownButtonFormField<int>(
                           initialValue: _pageSize,
                           decoration: const InputDecoration(
@@ -188,23 +202,8 @@ class _VendorOnboardingScreenState
                           },
                         ),
                       ),
-                    ];
-
-                    if (isNarrow) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          ExpansionTile(
-                            title: const Text('Filters'),
-                            childrenPadding: EdgeInsets.zero,
-                            children: [FilterRow(children: filterChildren)],
-                          ),
-                        ],
-                      );
-                    }
-
-                    return FilterRow(children: filterChildren);
-                  },
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 16),
 

@@ -397,7 +397,7 @@ class _FeedbackDetailScreenState extends ConsumerState<FeedbackDetailScreen> {
 
             // Status dropdown
             DropdownButtonFormField<String>(
-              value: feedback.status.value,
+              initialValue: feedback.status.value,
               decoration: const InputDecoration(
                 labelText: 'Status',
                 border: OutlineInputBorder(),
@@ -419,7 +419,7 @@ class _FeedbackDetailScreenState extends ConsumerState<FeedbackDetailScreen> {
 
             // Priority dropdown
             DropdownButtonFormField<String>(
-              value: feedback.priority?.value,
+              initialValue: feedback.priority?.value,
               decoration: const InputDecoration(
                 labelText: 'Priority',
                 border: OutlineInputBorder(),
@@ -501,7 +501,7 @@ class _FeedbackDetailScreenState extends ConsumerState<FeedbackDetailScreen> {
 
               // Auto-set status dropdown
               DropdownButtonFormField<String>(
-                value: _autoSetStatus,
+                initialValue: _autoSetStatus,
                 decoration: const InputDecoration(
                   labelText: 'Auto-set status (optional)',
                   border: OutlineInputBorder(),

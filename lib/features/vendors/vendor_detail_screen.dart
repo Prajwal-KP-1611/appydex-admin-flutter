@@ -79,11 +79,11 @@ class _VendorDetailViewState extends ConsumerState<_VendorDetailView> {
       title: 'Vendor detail',
       child: DefaultTabController(
         length: 8,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SingleChildScrollView(
-              child: Padding(
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
                 padding: const EdgeInsets.all(24),
                 child: _VendorSummaryCard(
                   vendor: vendor,
@@ -179,35 +179,36 @@ class _VendorDetailViewState extends ConsumerState<_VendorDetailView> {
                   },
                 ),
               ),
-            ),
-            const TabBar(
-              isScrollable: true,
-              tabs: [
-                Tab(icon: Icon(Icons.app_registration), text: 'Application'),
-                Tab(icon: Icon(Icons.room_service), text: 'Services'),
-                Tab(icon: Icon(Icons.book_online), text: 'Bookings'),
-                Tab(icon: Icon(Icons.contact_page), text: 'Leads'),
-                Tab(icon: Icon(Icons.payments), text: 'Revenue'),
-                Tab(icon: Icon(Icons.account_balance), text: 'Payouts'),
-                Tab(icon: Icon(Icons.analytics), text: 'Analytics'),
-                Tab(icon: Icon(Icons.folder), text: 'Documents'),
-              ],
-            ),
-            Expanded(
-              child: TabBarView(
-                children: [
-                  VendorApplicationTab(vendorId: vendor.id),
-                  VendorServicesTab(vendorId: vendor.id),
-                  VendorBookingsTab(vendorId: vendor.id),
-                  VendorLeadsTab(vendorId: vendor.id),
-                  VendorRevenueTab(vendorId: vendor.id),
-                  VendorPayoutsTab(vendorId: vendor.id),
-                  VendorAnalyticsTab(vendorId: vendor.id),
-                  VendorDocumentsTab(vendorId: vendor.id),
+              const TabBar(
+                isScrollable: true,
+                tabs: [
+                  Tab(icon: Icon(Icons.app_registration), text: 'Application'),
+                  Tab(icon: Icon(Icons.room_service), text: 'Services'),
+                  Tab(icon: Icon(Icons.book_online), text: 'Bookings'),
+                  Tab(icon: Icon(Icons.contact_page), text: 'Leads'),
+                  Tab(icon: Icon(Icons.payments), text: 'Revenue'),
+                  Tab(icon: Icon(Icons.account_balance), text: 'Payouts'),
+                  Tab(icon: Icon(Icons.analytics), text: 'Analytics'),
+                  Tab(icon: Icon(Icons.folder), text: 'Documents'),
                 ],
               ),
-            ),
-          ],
+              SizedBox(
+                height: 600,
+                child: TabBarView(
+                  children: [
+                    VendorApplicationTab(vendorId: vendor.id),
+                    VendorServicesTab(vendorId: vendor.id),
+                    VendorBookingsTab(vendorId: vendor.id),
+                    VendorLeadsTab(vendorId: vendor.id),
+                    VendorRevenueTab(vendorId: vendor.id),
+                    VendorPayoutsTab(vendorId: vendor.id),
+                    VendorAnalyticsTab(vendorId: vendor.id),
+                    VendorDocumentsTab(vendorId: vendor.id),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

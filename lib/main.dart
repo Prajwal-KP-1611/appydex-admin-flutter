@@ -32,6 +32,9 @@ import 'features/campaigns/referrals_screen.dart';
 import 'features/reviews/reviews_list_screen.dart';
 import 'features/reviews/vendor_flags_queue_screen.dart';
 import 'features/system/system_health_screen.dart';
+import 'features/bookings/screens/bookings_list_screen.dart';
+import 'features/bookings/screens/booking_detail_screen.dart';
+import 'features/referrals/screens/referrals_list_screen.dart';
 import 'routes.dart';
 
 // Provided via --dart-define at build time. Empty disables Sentry.
@@ -176,6 +179,48 @@ class _AppydexAdminAppState extends ConsumerState<AppydexAdminApp> {
       theme: AppTheme.lightTheme,
       themeMode: ThemeMode.light,
       initialRoute: initialRoute,
+      // Use builder to show global UI elements (e.g., session-expired banner)
+      builder: (context, child) {
+        // Post-frame to avoid calling during build
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          try {
+            final expired = ref.read(sessionExpiredProvider);
+            final messenger = ScaffoldMessenger.maybeOf(context);
+            if (messenger == null) return;
+            // Clear previous banners to avoid duplicates
+            messenger.clearMaterialBanners();
+
+            // Only show banner when session is soft-expired and we're not on the login screen
+            if (expired && initialRoute != '/login') {
+              messenger.showMaterialBanner(
+                MaterialBanner(
+                  content: const Text(
+                    'Your session has expired. Please re-login to continue.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        // Navigate to login (replace current route)
+                        Navigator.of(
+                          context,
+                        ).pushNamedAndRemoveUntil('/login', (route) => false);
+                      },
+                      child: const Text('Re-login'),
+                    ),
+                    TextButton(
+                      onPressed: () => messenger.hideCurrentMaterialBanner(),
+                      child: const Text('Dismiss'),
+                    ),
+                  ],
+                ),
+              );
+            }
+          } catch (_) {
+            // Ignore UI banner errors - should not crash app
+          }
+        });
+        return child ?? const SizedBox.shrink();
+      },
       navigatorObservers: [appRouteObserver],
       onGenerateRoute: (settings) {
         // Check authentication for protected routes
@@ -201,6 +246,9 @@ class _AppydexAdminAppState extends ConsumerState<AppydexAdminApp> {
           '/feedback/detail',
           '/reports',
           '/admins',
+          '/bookings',
+          '/bookings/detail',
+          '/referrals',
         ];
 
         // In test flavor, allow diagnostics without auth for widget tests
@@ -356,6 +404,28 @@ class _AppydexAdminAppState extends ConsumerState<AppydexAdminApp> {
             return MaterialPageRoute(
               settings: settings,
               builder: (_) => const SystemHealthScreen(),
+            );
+          case '/bookings':
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const BookingsListScreen(),
+            );
+          case '/bookings/detail':
+            final bookingId = settings.arguments as int?;
+            if (bookingId == null) {
+              return MaterialPageRoute(
+                settings: settings,
+                builder: (_) => const BookingsListScreen(),
+              );
+            }
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => BookingDetailScreen(bookingId: bookingId),
+            );
+          case '/referrals':
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const ReferralsListScreen(),
             );
           default:
             return MaterialPageRoute(

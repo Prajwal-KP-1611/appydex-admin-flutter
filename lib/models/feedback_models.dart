@@ -1,5 +1,6 @@
 /// Feedback system models for admin panel
 /// Based on API contract: FEEDBACK_SYSTEM_API.md
+library;
 
 enum FeedbackCategory {
   featureRequest('feature_request', 'Feature Request'),

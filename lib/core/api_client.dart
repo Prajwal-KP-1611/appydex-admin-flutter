@@ -10,6 +10,7 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 // AdminConfig and legacy X-Admin-Token removed — admin endpoints use JWT Bearer now.
+import 'auth/auth_service.dart';
 import 'auth/token_manager.dart';
 import 'auth/token_storage.dart';
 import 'config.dart';
@@ -367,14 +368,21 @@ class ApiClient {
       _ref.read(lastTraceIdProvider.notifier).state = traceId;
     }
 
-    // Automatically unwrap backend {success: true, data: {...}} format
+    // Automatically unwrap backend {success: true, data: ...} format
+    // BUT preserve pagination envelopes `{ success, data: [...], meta: {...} }`
     if (response.data is Map<String, dynamic>) {
-      final data = response.data as Map<String, dynamic>;
-      if (data.containsKey('success') && data.containsKey('data')) {
-        // Create a new response with unwrapped data instead of mutating
+      final body = response.data as Map<String, dynamic>;
+
+      final hasSuccess = body.containsKey('success');
+      final hasData = body.containsKey('data');
+      final hasMeta = body.containsKey('meta');
+
+      // Only unwrap when there is no `meta` sibling. If `meta` exists, keep full envelope
+      // so callers can access both `data` and `meta` for pagination.
+      if (hasSuccess && hasData && !hasMeta) {
         final unwrappedResponse = Response(
           requestOptions: response.requestOptions,
-          data: data['data'],
+          data: body['data'],
           statusCode: response.statusCode,
           statusMessage: response.statusMessage,
           headers: response.headers,
@@ -417,12 +425,40 @@ class ApiClient {
           handler.resolve(retried);
           return;
         } else {
-          // Refresh failed - session is invalid
-          debugPrint('[ApiClient] Refresh failed, session invalid');
+          // Refresh failed - mark session as expired (soft) for graceful UI handling
+          debugPrint('[ApiClient] Refresh failed, marking session as expired');
+          await _ref.read(authServiceProvider).markSessionExpired();
+
+          // Return empty response to prevent UI errors - banner will handle re-login
+          final emptyResponse = Response(
+            requestOptions: error.requestOptions,
+            statusCode: 401,
+            data: {
+              'success': false,
+              'error': {'message': 'Session expired'},
+            },
+          );
+          handler.resolve(emptyResponse);
+          return;
         }
       } catch (refreshError) {
-        // Refresh attempt failed
-        debugPrint('[ApiClient] Refresh error: $refreshError');
+        // Refresh attempt failed - mark session as expired
+        debugPrint(
+          '[ApiClient] Refresh error: $refreshError, marking session as expired',
+        );
+        await _ref.read(authServiceProvider).markSessionExpired();
+
+        // Return empty response to prevent UI errors
+        final emptyResponse = Response(
+          requestOptions: error.requestOptions,
+          statusCode: 401,
+          data: {
+            'success': false,
+            'error': {'message': 'Session expired'},
+          },
+        );
+        handler.resolve(emptyResponse);
+        return;
       }
     }
 

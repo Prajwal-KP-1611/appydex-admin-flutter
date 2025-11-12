@@ -457,6 +457,18 @@ const _allNavItems = [
     section: 'commerce',
   ),
   _AdminNavItem(
+    AppRoute.bookings,
+    'Bookings',
+    Icons.bookmark_outlined,
+    section: 'commerce',
+  ),
+  _AdminNavItem(
+    AppRoute.referrals,
+    'Referrals',
+    Icons.people_alt_outlined,
+    section: 'commerce',
+  ),
+  _AdminNavItem(
     AppRoute.campaigns,
     'Campaigns',
     Icons.campaign_outlined,

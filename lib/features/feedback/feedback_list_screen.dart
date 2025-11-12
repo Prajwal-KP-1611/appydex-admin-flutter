@@ -118,7 +118,7 @@ class FeedbackListScreen extends ConsumerWidget {
             SizedBox(
               width: 200,
               child: DropdownButtonFormField<String>(
-                value: ref.watch(feedbackCategoryFilterProvider),
+                initialValue: ref.watch(feedbackCategoryFilterProvider),
                 decoration: const InputDecoration(
                   labelText: 'Category',
                   border: OutlineInputBorder(),
@@ -145,7 +145,7 @@ class FeedbackListScreen extends ConsumerWidget {
             SizedBox(
               width: 200,
               child: DropdownButtonFormField<String>(
-                value: ref.watch(feedbackStatusFilterProvider),
+                initialValue: ref.watch(feedbackStatusFilterProvider),
                 decoration: const InputDecoration(
                   labelText: 'Status',
                   border: OutlineInputBorder(),
@@ -171,7 +171,7 @@ class FeedbackListScreen extends ConsumerWidget {
             SizedBox(
               width: 200,
               child: DropdownButtonFormField<String>(
-                value: ref.watch(feedbackPriorityFilterProvider),
+                initialValue: ref.watch(feedbackPriorityFilterProvider),
                 decoration: const InputDecoration(
                   labelText: 'Priority',
                   border: OutlineInputBorder(),
@@ -198,7 +198,7 @@ class FeedbackListScreen extends ConsumerWidget {
             SizedBox(
               width: 200,
               child: DropdownButtonFormField<String>(
-                value: ref.watch(feedbackSubmitterTypeFilterProvider),
+                initialValue: ref.watch(feedbackSubmitterTypeFilterProvider),
                 decoration: const InputDecoration(
                   labelText: 'Submitter Type',
                   border: OutlineInputBorder(),

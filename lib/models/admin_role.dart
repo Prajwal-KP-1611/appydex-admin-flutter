@@ -123,9 +123,38 @@ class AdminSession {
       '[AdminSession.fromJson] Explicit permissions: ${permissions?.length ?? 0} items',
     );
 
+    // Extract access and refresh tokens, handling both string and nested object formats
+    String? accessToken;
+    String? refreshToken;
+
+    // Try to get access token
+    final accessValue = json['access'] ?? json['access_token'];
+    if (accessValue is String) {
+      accessToken = accessValue;
+    } else if (accessValue is Map<String, dynamic>) {
+      // Backend might return nested object like { "token": "...", "expires_at": "..." }
+      accessToken = accessValue['token'] as String?;
+    }
+
+    // Try to get refresh token
+    final refreshValue = json['refresh'] ?? json['refresh_token'];
+    if (refreshValue is String) {
+      refreshToken = refreshValue;
+    } else if (refreshValue is Map<String, dynamic>) {
+      // Backend might return nested object
+      refreshToken = refreshValue['token'] as String?;
+    }
+
+    print(
+      '[AdminSession.fromJson] Access token extracted: ${accessToken != null && accessToken.isNotEmpty ? (accessToken.length >= 20 ? '${accessToken.substring(0, 20)}...' : accessToken) : 'empty'}',
+    );
+    print(
+      '[AdminSession.fromJson] Refresh token extracted: ${refreshToken != null && refreshToken.isNotEmpty ? (refreshToken.length >= 20 ? '${refreshToken.substring(0, 20)}...' : refreshToken) : 'empty'}',
+    );
+
     return AdminSession(
-      accessToken: (json['access'] ?? json['access_token']) as String? ?? '',
-      refreshToken: (json['refresh'] ?? json['refresh_token']) as String? ?? '',
+      accessToken: accessToken ?? '',
+      refreshToken: refreshToken ?? '',
       roles: roles,
       activeRole: activeRole,
       adminId:

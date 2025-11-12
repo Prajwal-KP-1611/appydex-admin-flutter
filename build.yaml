@@ -1,0 +1,31 @@
+# Build configuration for code generation
+targets:
+  $default:
+    builders:
+      freezed:
+        enabled: true
+        options:
+          # Generate copyWith methods
+          copy_with: true
+          # Generate map method for collections
+          map: true
+          # Generate when/maybeWhen methods for unions
+          when: true
+          # Generate toJson method
+          to_json: true
+          # Generate fromJson factory
+          from_json: true
+      
+      json_serializable:
+        enabled: true
+        options:
+          # Automatically convert between snake_case and camelCase
+          field_rename: snake
+          # Allow explicit null values
+          explicit_to_json: true
+          # Check for required parameters
+          checked: true
+          # Generate constructor with required parameters
+          constructor: ''
+          # Allow any type in maps
+          any_map: true

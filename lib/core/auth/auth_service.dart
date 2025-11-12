@@ -256,14 +256,26 @@ class AuthService {
             );
             await _saveSession(session);
           } else {
-            debugPrint('[AuthService.restoreSession] ❌ Silent refresh failed');
-            await logout();
-            return null;
+            // Silent refresh failed. Don't force immediate logout - mark session as expired
+            // and persist the state so the UI can surface a re-login prompt. This avoids
+            // a jarring immediate logout when the user returns after being away.
+            debugPrint(
+              '[AuthService.restoreSession] ❌ Silent refresh failed - marking session as expired (soft)',
+            );
+            session = session.copyWith(expiresAt: DateTime.now());
+            await _saveSession(session);
+            // Continue without returning; callers can detect expiration via session.isExpired
           }
         } catch (e) {
-          debugPrint('[AuthService.restoreSession] ❌ Error during refresh: $e');
-          await logout();
-          return null;
+          // On errors during refresh (network, CSRF mismatch, etc.), prefer a soft-expire
+          // over forcing logout. Persist the expired session so the app can show a
+          // re-login banner or require re-auth on protected actions.
+          debugPrint(
+            '[AuthService.restoreSession] ❌ Error during refresh (soft-expire): $e',
+          );
+          session = session.copyWith(expiresAt: DateTime.now());
+          await _saveSession(session);
+          // Continue and return the soft-expired session
         }
       }
 
@@ -415,6 +427,30 @@ class AuthService {
     await _delete(_AuthKeys.session);
     await _tokenStorage.clear();
     // Keep last email for convenience
+  }
+
+  /// Mark current session as expired without logging out
+  /// This allows UI to show re-login prompt instead of errors
+  Future<void> markSessionExpired() async {
+    try {
+      final sessionJson = await _read(_AuthKeys.session);
+      if (sessionJson == null || sessionJson.isEmpty) {
+        return;
+      }
+
+      final sessionData = jsonDecode(sessionJson) as Map<String, dynamic>;
+
+      // Update the expiry time to now (mark as expired)
+      sessionData['expires_at'] = DateTime.now().toIso8601String();
+
+      // Save the updated session
+      final updatedSessionJson = jsonEncode(sessionData);
+      await _write(_AuthKeys.session, updatedSessionJson);
+
+      debugPrint('[AuthService.markSessionExpired] Session marked as expired');
+    } catch (e) {
+      debugPrint('[AuthService.markSessionExpired] Error: $e');
+    }
   }
 
   /// Save session to secure storage
@@ -598,7 +634,14 @@ class AdminSessionNotifier extends StateNotifier<AdminSession?> {
 /// Convenience provider to check if user is authenticated
 final isAuthenticatedProvider = Provider<bool>((ref) {
   final session = ref.watch(adminSessionProvider);
-  return session != null && session.isValid;
+  // Consider session authenticated only if it's present, has a token and is not expired.
+  return session != null && session.isValid && !session.isExpired;
+});
+
+/// Provider that indicates whether the current session is expired (soft-expire)
+final sessionExpiredProvider = Provider<bool>((ref) {
+  final session = ref.watch(adminSessionProvider);
+  return session != null && session.isExpired;
 });
 
 /// Provider for current admin role

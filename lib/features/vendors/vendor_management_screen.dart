@@ -8,7 +8,6 @@ import '../../providers/vendors_provider.dart';
 import '../../routes.dart';
 import '../shared/admin_sidebar.dart';
 import '../../widgets/data_table_simple.dart';
-import '../../widgets/filter_row.dart';
 import '../../widgets/status_chip.dart';
 import '../../core/export_util.dart';
 import '../../widgets/trace_snackbar.dart';
@@ -123,16 +122,25 @@ class _VendorManagementScreenState
                 ],
 
                 // Filters
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isNarrow = constraints.maxWidth < 900;
-                    final filterChildren = <Widget>[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Theme.of(
+                        context,
+                      ).dividerColor.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
                       SizedBox(
-                        width: 220,
+                        width: 320,
                         child: TextField(
                           controller: _searchController,
                           decoration: const InputDecoration(
-                            labelText: 'Search (company or slug)',
+                            labelText: 'Search (company, email, or phone)',
                             prefixIcon: Icon(Icons.search),
                           ),
                           onSubmitted: (value) => notifier.updateFilter(
@@ -140,26 +148,32 @@ class _VendorManagementScreenState
                           ),
                         ),
                       ),
-                      DropdownButtonFormField<String?>(
-                        initialValue: state.filter.status,
-                        decoration: const InputDecoration(labelText: 'Status'),
-                        items: const <DropdownMenuItem<String?>>[
-                          DropdownMenuItem(value: null, child: Text('All')),
-                          DropdownMenuItem(
-                            value: 'verified',
-                            child: Text('Active'),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: DropdownButtonFormField<String?>(
+                          value: state.filter.status,
+                          decoration: const InputDecoration(
+                            labelText: 'Status',
                           ),
-                          DropdownMenuItem(
-                            value: 'suspended',
-                            child: Text('Suspended'),
+                          items: const <DropdownMenuItem<String?>>[
+                            DropdownMenuItem(value: null, child: Text('All')),
+                            DropdownMenuItem(
+                              value: 'verified',
+                              child: Text('Active'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'suspended',
+                              child: Text('Suspended'),
+                            ),
+                          ],
+                          onChanged: (value) => notifier.updateFilter(
+                            state.filter.copyWith(status: value, page: 1),
                           ),
-                        ],
-                        onChanged: (value) => notifier.updateFilter(
-                          state.filter.copyWith(status: value, page: 1),
                         ),
                       ),
+                      const SizedBox(width: 16),
                       SizedBox(
-                        width: 150,
+                        width: 180,
                         child: DropdownButtonFormField<int>(
                           initialValue: _pageSize,
                           decoration: const InputDecoration(
@@ -181,23 +195,8 @@ class _VendorManagementScreenState
                           },
                         ),
                       ),
-                    ];
-
-                    if (isNarrow) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          ExpansionTile(
-                            title: const Text('Filters'),
-                            childrenPadding: EdgeInsets.zero,
-                            children: [FilterRow(children: filterChildren)],
-                          ),
-                        ],
-                      );
-                    }
-
-                    return FilterRow(children: filterChildren);
-                  },
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 16),
 
@@ -854,18 +853,26 @@ class _VendorNameCell extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Text(
-          vendor.companyName,
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500),
+        Flexible(
+          child: Text(
+            vendor.companyName,
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
         ),
         const SizedBox(width: 8),
-        Text(
-          '(${vendor.slug})',
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+        Flexible(
+          child: Text(
+            '(${vendor.slug})',
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
         ),
       ],
     );

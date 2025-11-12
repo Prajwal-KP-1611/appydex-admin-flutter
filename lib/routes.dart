@@ -21,7 +21,9 @@ enum AppRoute {
   feedbackDetail('/feedback/detail'),
   audit('/audit'),
   reports('/reports'),
-  diagnostics('/diagnostics');
+  diagnostics('/diagnostics'),
+  bookings('/bookings'),
+  referrals('/referrals');
 
   const AppRoute(this.path);
   final String path;
