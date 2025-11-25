@@ -154,7 +154,7 @@ class _VendorOnboardingScreenState
                       const SizedBox(width: 16),
                       Expanded(
                         child: DropdownButtonFormField<String?>(
-                          value: state.filter.status,
+                          initialValue: state.filter.status,
                           decoration: const InputDecoration(
                             labelText: 'Status',
                           ),
@@ -241,6 +241,9 @@ class _VendorOnboardingScreenState
                         label: const Text('Approve Selected'),
                       ),
                       const SizedBox(width: 12),
+                      // TODO: CSV export includes contact info - must comply with platform-mediated contact model
+                      // Admin can view contact details for operational purposes, but systematic export
+                      // should not be used to bypass the transaction platform model.
                       OutlinedButton.icon(
                         onPressed: rows.isEmpty
                             ? null
@@ -406,6 +409,7 @@ class _VendorOnboardingScreenState
                                     );
                                   }
                                 : null,
+                            // TODO: CSV export includes contact info - must comply with platform-mediated contact model
                             onExport: () {
                               final csv = toCsv([
                                 {

@@ -121,7 +121,7 @@ class _SubscriptionPaymentHistoryScreenState
                         SizedBox(
                           width: 180,
                           child: DropdownButtonFormField<String?>(
-                            value: state.filter.status,
+                            initialValue: state.filter.status,
                             decoration: const InputDecoration(
                               labelText: 'Status',
                               prefixIcon: Icon(Icons.filter_list, size: 20),
@@ -166,7 +166,7 @@ class _SubscriptionPaymentHistoryScreenState
                         SizedBox(
                           width: 180,
                           child: DropdownButtonFormField<String?>(
-                            value: _selectedMonth,
+                            initialValue: _selectedMonth,
                             decoration: const InputDecoration(
                               labelText: 'Month',
                               prefixIcon: Icon(Icons.calendar_month, size: 20),

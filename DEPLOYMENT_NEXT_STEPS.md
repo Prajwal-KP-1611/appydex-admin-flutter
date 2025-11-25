@@ -125,6 +125,73 @@ netlify deploy --dir=build/web --prod
 
 ### Step 2: Verify Staging Deployment
 
+#### 🔒 SECURITY VERIFICATION (MANDATORY)
+
+**Auth Endpoint Contract Validation**:
+```bash
+# Test admin login endpoint
+curl -X POST "https://api-staging.appydex.co/api/v1/admin/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email_or_phone":"YOUR_TEST_ADMIN_EMAIL","password":"YOUR_TEST_PASSWORD"}'
+
+# Expected response shape:
+# {
+#   "access_token": "eyJ...",      # JWT token (verify format: 3 base64 parts separated by dots)
+#   "token_type": "bearer",        # Must be "bearer"
+#   "expires_in": 3600,            # Seconds until expiry (verify: 900-3600 range)
+#   "refresh_token": "eyJ..." OR cookie  # Either in response OR HttpOnly cookie
+# }
+```
+
+**Verify Token Shape**:
+```bash
+# Check token structure (should be valid JWT)
+TOKEN="<access_token_from_response>"
+echo $TOKEN | cut -d '.' -f 2 | base64 -d | jq .
+# Should show: { "sub": "admin_id", "exp": 1234567890, "email": "..." }
+```
+
+**Validate Client Expectations**:
+- ✅ `access_token` is a valid JWT (3 parts: header.payload.signature)
+- ✅ `token_type` is exactly "bearer" (lowercase)
+- ✅ `expires_in` is present and reasonable (15-60 minutes)
+- ✅ Token contains required claims: `sub`, `exp`, `email` (or `role`)
+- ✅ If using HttpOnly cookies: `admin_refresh_token` cookie is set with Secure flag
+
+**Mock Mode Protection**:
+```bash
+# Verify production builds cannot enable mock mode
+flutter build web --dart-define=APP_FLAVOR=prod --release
+# Search build artifacts for mock data flag
+grep -r "mockMode.*true" build/web/
+# ✅ Should return empty (no matches)
+```
+
+**Repository Secret Scan**:
+```bash
+# Search for hardcoded secrets (run from project root)
+echo "🔍 Scanning for secrets..."
+
+# Passwords
+grep -riE "password.*[:=]['\"].*['\"]" . \
+  --exclude-dir={.git,build,node_modules,.dart_tool} \
+  --exclude="*.md" --exclude="*.example" --exclude=".env*"
+
+# API Keys
+grep -riE "(api[_-]?key|secret[_-]?key|private[_-]?key).*[:=]" . \
+  --exclude-dir={.git,build,node_modules,.dart_tool} \
+  --exclude="*.md" --exclude="*.example"
+
+# Tokens
+grep -riE "(sentry_dsn|stripe_key|jwt_secret).*[:=]['\"]https?://" . \
+  --exclude-dir={.git,build,node_modules,.dart_tool}
+
+# ✅ Expected: Only matches in .env.example, docs/*.md, or commented examples
+# ❌ Alert: Any matches in lib/**/*.dart or uncommented config files
+```
+
+#### ⚡ FUNCTIONAL TESTING
+
 1. **Security headers**:
    ```bash
    curl -I https://admin-staging.appydex.com
@@ -333,7 +400,21 @@ Existing documentation:
 
 ## ✅ Success Criteria
 
-Before marking production deployment complete, verify:
+### 🔒 Security Checklist (Pre-Launch)
+
+**MANDATORY - Block go-live if any fail**:
+
+- [ ] **Auth Contract Validated**: Backend auth endpoint returns expected token shape (see Step 2)
+- [ ] **No Hardcoded Passwords**: README.md and docs use placeholders (not 'SecurePassword123')
+- [ ] **Admin Credentials Secured**: Real admin password stored in password manager (not in code/docs)
+- [ ] **Mock Mode Protected**: `kAppFlavor == 'prod'` prevents mock data in production builds
+- [ ] **API Configuration**: Production build uses `--dart-define=API_BASE_URL=https://...` (not localhost)
+- [ ] **Token Storage Verified**: flutter_secure_storage used (mobile/desktop) or SharedPreferences (web fallback)
+- [ ] **Secret Scan Clean**: No API keys, passwords, or tokens in `lib/**/*.dart` files
+- [ ] **Environment Variables**: SENTRY_DSN and other secrets passed via dart-define (not hardcoded)
+- [ ] **HttpOnly Cookies**: Backend sets refresh token as HttpOnly cookie (not in response body)
+
+### ⚡ Functional Checklist
 
 - [ ] Admin can login and session persists on refresh
 - [ ] Sentry captures errors with correct environment tag
@@ -341,8 +422,26 @@ Before marking production deployment complete, verify:
 - [ ] Security headers present in production (curl check)
 - [ ] Audit logs load and display admin actions
 - [ ] Integration tests pass against staging
-- [ ] No hardcoded secrets in repository (Gitleaks scan passes)
 - [ ] Backend CORS allows credentials from admin origin
+
+### 📋 Pre-Launch Security Audit Summary
+
+| Item | Status | Notes |
+|------|--------|-------|
+| API Base URL | ✅ PASS | Uses localhost:16110 (dev), dart-define for prod |
+| Mock Mode Protection | ✅ PASS | `if (kAppFlavor == 'prod') return false;` in config.dart |
+| Token Storage | ✅ PASS | flutter_secure_storage (mobile/desktop), SharedPreferences (web) |
+| Hardcoded Passwords | ✅ FIXED | README.md updated with placeholders |
+| Secrets in Repository | ✅ VERIFIED | SENTRY_DSN only in DEPLOYMENT_NEXT_STEPS.md as example |
+| .env.example | ✅ CREATED | Template with security warnings |
+| Auth Endpoint | ⚠️ NEEDS BACKEND VERIFICATION | Curl test in Step 2 |
+| Pre-Launch Checklist | ✅ DOCUMENTED | This section |
+
+**Emergency Contacts (add before launch)**:
+- Backend Team Lead: [NAME] - [PHONE/EMAIL]
+- DevOps Oncall: [CONTACT]
+- Security Lead: [CONTACT]
+- Product Owner: [CONTACT]
 
 ---
 

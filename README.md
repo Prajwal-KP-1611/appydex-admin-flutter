@@ -33,28 +33,29 @@ flutter run
 
 ```bash
 BASE=https://api.appydex.co
+TOKEN="your_access_token_here" # ⚠️ Replace with actual token from login response
 
 # List vendors (admin)
 curl -X GET "$BASE/api/v1/admin/vendors?page=1&page_size=20" \
-  -H "Authorization: Bearer <ACCESS_TOKEN>"
+  -H "Authorization: Bearer $TOKEN"
 
 # Vendor detail
 curl -X GET "$BASE/api/v1/admin/vendors/123" \
-  -H "Authorization: Bearer <ACCESS_TOKEN>"
+  -H "Authorization: Bearer $TOKEN"
 
 # Verify vendor via PATCH
 curl -X PATCH "$BASE/api/v1/admin/vendors/123" \
-  -H "Authorization: Bearer <ACCESS_TOKEN>" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"is_verified":true,"notes":"Verified via UI"}'
 
 # List subscriptions
 curl -X GET "$BASE/api/v1/admin/subscriptions?page=1&page_size=20" \
-  -H "Authorization: Bearer <ACCESS_TOKEN>"
+  -H "Authorization: Bearer $TOKEN"
 
 # Activate subscription
 curl -X POST "$BASE/api/v1/subscriptions/42/activate" \
-  -H "Authorization: Bearer <ACCESS_TOKEN>" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"paid_months":3}'
 ```
@@ -68,10 +69,16 @@ curl -X POST "$BASE/api/v1/subscriptions/42/activate" \
 // Simple password-only login
 await authService.login(
   email: 'admin@appydex.com',
-  password: 'SecurePassword123',
+  password: 'YOUR_SECURE_PASSWORD', // ⚠️ Never commit real passwords
 );
 ```
 
+**🔒 Security Note:**
+- Store admin credentials in a **password manager** or **secure vault**
+- Never commit real passwords to version control
+- Use environment variables for CI/CD: `ADMIN_EMAIL` and `ADMIN_PASSWORD`
+
+**API Endpoint:**
 - **Deprecated:** `POST /admin/auth/request-otp` (returns HTTP 410 GONE)
 - **Current:** `POST /admin/auth/login` with `{ "email_or_phone": "...", "password": "..." }`
 - **Vendor/User auth:** Still uses OTP (unchanged)

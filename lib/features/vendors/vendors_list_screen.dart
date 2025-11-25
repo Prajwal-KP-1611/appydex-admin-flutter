@@ -231,6 +231,9 @@ class _VendorsListScreenState extends ConsumerState<VendorsListScreen> {
                         child: const Text('Verify selected'),
                       ),
                       const SizedBox(width: 12),
+                      // TODO: CSV export includes contact info - must comply with platform-mediated contact model
+                      // Admin can view contact details for operational purposes, but systematic export
+                      // should not be used to bypass the transaction platform model.
                       OutlinedButton.icon(
                         onPressed: rows.isEmpty
                             ? null
@@ -399,6 +402,7 @@ class _VendorsListScreenState extends ConsumerState<VendorsListScreen> {
                                     : null,
                                 onExport: () {
                                   final csv = toCsv([
+                                    // TODO: CSV export includes contact info - must comply with platform-mediated contact model
                                     {
                                       'id': vendor.id,
                                       'company_name': vendor.companyName,
